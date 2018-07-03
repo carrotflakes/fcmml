@@ -1,0 +1,212 @@
+start = _ many<command> _
+
+command
+= parallel
+| note
+| polyphonicNote
+| octave
+| setLength
+| volume
+| tempo
+
+parallel = {
+  command: command
+  _ "/"
+  type:=parallel
+}
+
+note = {
+  pitch: pitch
+  pitchTo: (
+    {
+      _ "*" _
+      octave: (octave _)
+      pitch: pitch
+    }
+  |
+    \null
+  )
+  length: (_ length | \null)
+  slur: (_ "&" \true | \false)
+  type:=note
+|
+  "r"
+  length: (_ length | \null)
+  type:=rest
+}
+
+polyphonicNote = {
+  "'" _
+  (
+    chord: chord
+  |
+    commands: many<note | octave>
+  )
+  "'"
+  length: (length | \null)
+  type:=polyphonicNote
+}
+
+pitch = {
+  name: `[a-g]
+  _
+  accidental: ("+" \1 | "-" \-1 | \0)
+}
+
+octave = {
+  "o" _
+  number: signedInteger
+  type:=relativeOctave
+|
+  "o" _
+  number: (unsignedInteger | \4)
+  type:=octave
+|
+  number: (">" \1 | "<" \-1)
+  type:=relativeOctave
+}
+
+length = {
+  number: unsignedInteger
+  _
+  dots: `*("." _) -> { return $.length; }
+  tie: ("^" _ length _ | \null)
+}
+
+setLength = {
+  "l" _
+  length: length
+  type:=length
+}
+
+volume = {
+  "v" _
+  number: signedInteger
+  type:=relativeVolume
+|
+  "v" _
+  number: (unsignedInteger | \64)
+  type:=volume
+}
+
+tempo = {
+  "t" _
+  number: (&[+-] float)
+  type:=relativeTempo
+|
+  "t" _
+  number: (float | \120)
+  type:=tempo
+}
+
+//////////
+
+signedInteger = `([+-]([1-9] *[0-9] | "0")) -> { return parseInt($); }
+unsignedInteger = `([1-9] *[0-9] | "0") -> { return parseInt($); }
+float = `(?[+-] ([1-9] *[0-9] | '0') ?("." ,4*[0-9])) -> { return parseInt($); }
+
+_ = *(whitespace | comment)
+
+whitespace = +[ \t\r\n]
+
+comment = "//" *[^\n] ("\n" | !.) | "/*" *([^*] | '*' [^/]) "*/"
+
+many<x> = @?(x *(_ x))
+many1<x> = @(x *(_ x))
+sepBy<x, sep> = @?(x *(_ sep _ x))
+sepEndBy<x, sep> = @?(x *(_ sep _ x) ?(_ sep))
+sepBy1<x, sep> = @(x *(_ sep _ x))
+sepEndBy1<x, sep> = @(x *(_ sep _ x) ?(_ sep))
+
+//////////
+
+chord = {
+  root: (pitchName | degreeName)
+  (base | third fifth sixthOrSeventh) tensions
+  ?inversion
+}
+
+base = (
+  "5"
+  fifth: \0
+|
+  "sus4"
+  third: \1
+  fifth: \0
+| "7sus4"
+  third: \1
+  fifth: \0
+  seventh: \0
+| "dim"
+  third: \-1
+  fifth: \-1
+  ?(
+    "7"
+    seventh: \-1
+  )
+)
+
+third =
+  third: ("m" \-1 | \0)
+
+fifth =
+  fifth: (
+    "alt" \-1
+  |
+    "aug" \1
+  |
+    \0
+  )
+
+sixthOrSeventh = ?(
+  "6"
+  sixth: \0
+|
+  seventh: (
+    "7" \0
+  |
+    "M7" \1
+  )
+)
+
+tensions = ?(
+  ninth: (
+    "-9" \-1
+  |
+    "+9" \1
+  |
+    "9" \0
+  )
+)
+?(
+  eleventh: (
+    "-11" \-1
+  |
+    "+11" \1
+  |
+    "11" \0
+  )
+)
+?(
+  thirteenth: (
+    "-13" \-1
+  |
+    "+13" \1
+  |
+    "13" \0
+  )
+)
+
+inversion =
+  ":"
+  inversion: `(?"-" +[0-9]) -> { return parseInteger($); }
+
+pitchName = {
+  name: `[A-G]
+  accidental: ("-" \-1 | "+" \1 | \0)
+}
+
+degreeName = {
+  accidental: ("-" \-1 | "+" \1 | \0)
+  degree: `[1-7]
+}

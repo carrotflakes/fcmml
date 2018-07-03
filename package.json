@@ -1,0 +1,19 @@
+{
+  "name": "fcmml",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {},
+  "devDependencies": {
+    "snakeparser-loader": "^1.0.1",
+    "webpack": "^4.12.2",
+    "webpack-cli": "^3.0.8"
+  }
+}
