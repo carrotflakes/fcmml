@@ -2,12 +2,16 @@ start = _ many<command> _
 
 command
 = parallel
+| macroDefinition
+| macro
+| track
 | note
 | polyphonicNote
 | octave
 | setLength
 | volume
 | tempo
+| group
 
 parallel = {
   command: command
@@ -15,12 +19,35 @@ parallel = {
   type:=parallel
 }
 
+macroDefinition = {
+  identifier: identifier
+  _
+  parameters: ("(" _ sepBy<identifier, ","> _ ")" | \[])
+  _ "=" _
+  commands: many<command>
+  _ ";"
+  type:=macroDefinition
+}
+
+macro = {
+  identifier: identifier
+  _
+  arguments: ("(" _ sepBy<many<command>, ","> _ ")" | \[])
+  type:=macro
+}
+
+track = {
+  "@" _
+  number: unsignedInteger
+  type:=track
+}
+
 note = {
   pitch: pitch
   pitchTo: (
     {
       _ "*" _
-      octave: (octave _)
+      preCommands: (many<octave> _)
       pitch: pitch
     }
   |
@@ -79,6 +106,26 @@ setLength = {
   type:=length
 }
 
+transpose = {
+  "kt" _
+  number: unsignedInteger
+  type:=transpose
+|
+  "kt" _
+  number: signedInteger
+  type:=relativeTranspose
+}
+
+velocity = {
+  "y" _
+  number: unsignedInteger
+  type:=velocity
+|
+  "y" _
+  number: signedInteger
+  type:=relativeVelocity
+}
+
 volume = {
   "v" _
   number: signedInteger
@@ -99,7 +146,25 @@ tempo = {
   type:=tempo
 }
 
+group = {
+  "[" _
+  length: (length | \null)
+  _
+  commands: many<command>
+  _
+  jointCommands: (
+    "|" _ many<command>
+  |
+    \[]
+  )
+  _ "]" _
+  times: (unsignedInteger | \1)
+  type:=group
+}
+
 //////////
+
+identifier = `([A-Z]*[A-Za-z0-9])
 
 signedInteger = `([+-]([1-9] *[0-9] | "0")) -> { return parseInt($); }
 unsignedInteger = `([1-9] *[0-9] | "0") -> { return parseInt($); }

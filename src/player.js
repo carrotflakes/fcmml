@@ -1,3 +1,5 @@
+import {Synth} from './synth.js';
+
 export default class Player {
 
   constructor() {
@@ -8,22 +10,40 @@ export default class Player {
     } else {
       throw new Error("Failed to get AudioContext.");
     }
+
     this.masterGain = this.ac.createGain();
-    masterGain.connect(this.ac.destination);
+    this.masterGain.connect(this.ac.destination);
+    this.masterGain.gain.value = 0.5; // 音小さめに
   }
 
   play(music) {
+    const synthes = [];
+    const oscs = [];
+    for (const i = 0; i < music.trackNum; ++i) {
+      synthes[i] = this.defaultSynth();
+      oscs[i] = [];
+    }
+
     const eventGen = this.seeker(music.events);
     let {value: event, done} = eventGen.next();
-    let secondPerBeat = 60 / 120;
-    const synthes = [];
-
-    for (const i = 0; i < music.trackNum; ++i)
-      synthes = this.newDefaultSynth();
 
     while (!done) {
       switch (event.type) {
-        case 'aaa':
+        case 'note':
+          const {track, time} = event;
+          const osc = synthes[track].makeOsc(this.ac, this.masterGain);
+          osc.start(time); // TODO
+          oscs[track].push(osc);
+          break;
+        case 'param':
+          const {track, time, name, value} = event;
+          for (const osc of oscs[track]) {
+            osc.setParam(name, value, time);
+          }
+          break;
+        case 'synth':
+          const {track, time, synth} = event;
+          synthes[track] = synth;
           break;
       }
       {value: event, done} = eventGen.next();
@@ -32,10 +52,9 @@ export default class Player {
 
   *seeker(events) {
     let segno = null;
-    let i = 0;
-    for (; i < events.length; ++i) {
+    for (let i = 0; i < events.length; ++i) {
       const event = events[i];
-      switch (event.type) {
+      switch (event.metaType) {
         case 'segno':
           segno = i;
           break;
@@ -51,8 +70,8 @@ export default class Player {
     }
   }
 
-  newDefaultSynth() {
-    return null;
+  defaultSynth() {
+    return new Synth();
   }
 }
 
