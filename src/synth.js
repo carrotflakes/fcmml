@@ -14,6 +14,8 @@ export class Synth {
 class Osc {
   constructor(allNodes) {
     this.allNodes = allNodes;
+    this.roots = [];
+    this.releaseTime = Infinity;
   }
 
   start(time) {
@@ -26,6 +28,8 @@ class Osc {
     for (const node of this.allNodes) {
       node.stop(time);
     }
+    //this.releaseTime = 0;
+    //this.releaseTime = Math.max(this.releaseTime, releaseTime);
   }
 
   frequency(start, time, end, endTime) {

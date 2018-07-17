@@ -44,11 +44,14 @@ export default class Player {
       if (event.beat < beat) {
         beat = event.beat;
       }
-      const dTime = (event.beat - beat) * 240 / this.tempo;
+      const dTime = (event.beat - beat) * 60 / this.tempo;
       beat = event.beat;
       time += dTime;
-      await asyncSleep((time - this.bufferTime - this.ac.currentTime) * 1000);
+      await asyncSleep((time - this.ac.currentTime - this.bufferTime) * 1000);
       this.handleEvent(event, time);
+
+      // remove stoped oscs
+      
     }
   }
 
@@ -58,8 +61,8 @@ export default class Player {
         {
           const {track, gatetime} = event;
           const osc = this.synthes[track].makeOsc(this.ac, this.mixers[track].getInput());
-          const endTime = time + gatetime * 240 / this.tempo;
-          osc.start(time); // TODO
+          const endTime = time + gatetime * 60 / this.tempo;
+          osc.start(time);
           osc.stop(endTime);
           osc.setParam('v', event.velocity, time);
           osc.setParam('f', event.frequency, time);
@@ -91,8 +94,7 @@ export default class Player {
   *seeker(events) {
     let segno = null;
     for (let i = 0; i < events.length; ++i) {
-      const event = events[i];
-      switch (event.metaType) {
+      switch (events[i].metaType) {
         case 'segno':
           segno = i;
           break;
@@ -100,6 +102,7 @@ export default class Player {
           if (segno === null) {
             return;
           }
+          yield events[i];
           i = segno;
           break;
       }

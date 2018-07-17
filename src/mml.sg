@@ -9,9 +9,14 @@ command
 | polyphonicNote
 | octave
 | setLength
+| quantize
+| absoluteQuantize
+| velocity
 | volume
 | pan
 | synthParam
+| transpose
+| key
 | tempo
 | group
 | segno
@@ -56,12 +61,12 @@ note = {
   |
     \null
   )
-  length: (_ length | \null)
+  length: (_ length)
   slur: (_ "&" \true | \false)
   type:=note
 |
   "r"
-  length: (_ length | \null)
+  length: (_ length)
   type:=rest
 }
 
@@ -73,7 +78,7 @@ polyphonicNote = {
     commands: many<note | octave>
   )
   "'"
-  length: (length | \null)
+  length: (length)
   type:=polyphonicNote
 }
 
@@ -101,12 +106,32 @@ length = {
   _
   dots: `*("." _) -> { return $.length; }
   tie: ("^" _ length _ | \null)
-} -? {return $.number !== null || $.dots > 0 || $.tie !== null}
+}
 
 setLength = {
   "l" _
   length: length
   type:=length
+}
+
+quantize = {
+  "q" _
+  number: unsignedInteger
+  type:=quantize
+|
+  "q" _
+  number: signedInteger
+  type:=relativeQuantize
+}
+
+absoluteQuantize = {
+  "@q" _
+  number: unsignedInteger
+  type:=absoluteQuantize
+|
+  "@" _
+  number: signedInteger
+  type:=relativeAbsoluteQuantize
 }
 
 transpose = {
@@ -117,6 +142,18 @@ transpose = {
   "kt" _
   number: signedInteger
   type:=relativeTranspose
+}
+
+key = {
+  "k" _ "(" _
+  (
+    key: `([A-G] ?([+-]) ?"m")
+    type:=key
+  |
+    pitchs: sepBy<pitch, ",">
+    type:=key
+  )
+  _ ")"
 }
 
 velocity = {
@@ -171,7 +208,7 @@ tempo = {
 
 group = {
   "[" _
-  length: (length | \null)
+  length: length
   _
   commands: many<command>
   _
