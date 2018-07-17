@@ -10,8 +10,11 @@ command
 | octave
 | setLength
 | volume
+| pan
+| synthParam
 | tempo
 | group
+| segno
 
 parallel = {
   command: command
@@ -94,11 +97,11 @@ octave = {
 }
 
 length = {
-  number: unsignedInteger
+  number: (unsignedInteger | \null)
   _
   dots: `*("." _) -> { return $.length; }
   tie: ("^" _ length _ | \null)
-}
+} -? {return $.number !== null || $.dots > 0 || $.tie !== null}
 
 setLength = {
   "l" _
@@ -136,13 +139,33 @@ volume = {
   type:=volume
 }
 
+pan = {
+  "p" _
+  number: signedInteger
+  type:=relativePan
+|
+  "p" _
+  number: (unsignedInteger | \64)
+  type:=pan
+}
+
+synthParam = {
+  name: `("w" | "x") _
+  number: signedInteger
+  type:=relativeSynthParam
+|
+  name: `("w" | "x") _
+  number: (unsignedInteger | \0)
+  type:=synthParam
+}
+
 tempo = {
   "t" _
   number: (&[+-] float)
   type:=relativeTempo
 |
   "t" _
-  number: (float | \120)
+  number: (![+-]float | \120)
   type:=tempo
 }
 
@@ -162,6 +185,11 @@ group = {
   type:=group
 }
 
+
+segno = {
+  "$"
+  type:=segno
+}
 //////////
 
 identifier = `([A-Z]*[A-Za-z0-9])

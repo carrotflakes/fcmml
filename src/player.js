@@ -1,8 +1,10 @@
-import {Synth} from './synth.js';
+import {Synth, Mixer} from './synth.js';
 
 export default class Player {
 
-  constructor() {
+  constructor(music, opt={}) {
+    this.music = music;
+
     if (typeof webkitAudioContext !== "undefined") {
       this.ac = new webkitAudioContext();
     } else if (typeof AudioContext !== "undefined") {
@@ -11,42 +13,78 @@ export default class Player {
       throw new Error("Failed to get AudioContext.");
     }
 
-    this.masterGain = this.ac.createGain();
-    this.masterGain.connect(this.ac.destination);
-    this.masterGain.gain.value = 0.5; // 音小さめに
+    this.mixerMaster = new Mixer(this.ac, this.ac.destination);
+    this.mixerMaster.setParam('volume', 0.5, 0);
+    this.mixerMaster.setParam('pan', 0.5, 0);
+
+    this.bufferTime = opt.bufferTime || 1; // sec
+
+    this.init();
   }
 
-  play(music) {
-    const synthes = [];
-    const oscs = [];
-    for (const i = 0; i < music.trackNum; ++i) {
-      synthes[i] = this.defaultSynth();
-      oscs[i] = [];
+  init() {
+    this.mixers = [];
+    this.synthes = [];
+    this.oscs = [];
+    for (let i = 0; i < this.music.trackNum; ++i) {
+      const mixer = new Mixer(this.ac, this.mixerMaster.getInput());
+      mixer.setParam('volume', 1, 0);
+      mixer.setParam('pan', 0.5, 0);
+      this.mixers[i] = mixer;
+      this.synthes[i] = this.defaultSynth();
+      this.oscs[i] = [];
     }
+    this.tempo = 120;
+  }
 
-    const eventGen = this.seeker(music.events);
-    let {value: event, done} = eventGen.next();
+  async play() {
+    let time = this.ac.currentTime + 0.01;
+    let beat = 0;
+    for (const event of this.seeker(this.music.events)) {
+      if (event.beat < beat) {
+        beat = event.beat;
+      }
+      const dTime = (event.beat - beat) * 240 / this.tempo;
+      beat = event.beat;
+      time += dTime;
+      await asyncSleep((time - this.bufferTime - this.ac.currentTime) * 1000);
+      this.handleEvent(event, time);
+    }
+  }
 
-    while (!done) {
-      switch (event.type) {
-        case 'note':
-          const {track, time} = event;
-          const osc = synthes[track].makeOsc(this.ac, this.masterGain);
+  handleEvent(event, time) {
+    switch (event.type) {
+      case 'note':
+        {
+          const {track, gatetime} = event;
+          const osc = this.synthes[track].makeOsc(this.ac, this.mixers[track].getInput());
+          const endTime = time + gatetime * 240 / this.tempo;
           osc.start(time); // TODO
-          oscs[track].push(osc);
-          break;
-        case 'param':
-          const {track, time, name, value} = event;
-          for (const osc of oscs[track]) {
+          osc.stop(endTime);
+          osc.setParam('v', event.velocity, time);
+          osc.setParam('f', event.frequency, time);
+          osc.frequency(event.frequency, time, event.frequencyTo, endTime);
+          this.oscs[track].push(osc);
+        }
+        break;
+      case 'tempo':
+        this.tempo = event.tempo;
+        break;
+      case 'param':
+        {
+          const {track, name, value} = event;
+          this.mixers[track].setParam(name, value, time);
+          for (const osc of this.oscs[track]) {
             osc.setParam(name, value, time);
           }
-          break;
-        case 'synth':
-          const {track, time, synth} = event;
-          synthes[track] = synth;
-          break;
-      }
-      {value: event, done} = eventGen.next();
+        }
+        break;
+      case 'synth':
+        {
+          const {track, synth} = event;
+          this.synthes[track] = synth;
+        }
+        break;
     }
   }
 
@@ -64,9 +102,8 @@ export default class Player {
           }
           i = segno;
           break;
-        default:
-          yield events[i];
       }
+      yield events[i];
     }
   }
 
@@ -75,16 +112,4 @@ export default class Player {
   }
 }
 
-
-function volumeToGainValue(v) {
-  if (v === 0) {
-    return 0;
-  }
-  return dbToGainValue(-(1 - v) * 3 * 16);
-
-  return (Math.pow(11, v) - 1) / 10;
-}
-
-function dbToGainValue(v) {
-  return Math.exp(v * Math.LN10 / 20);
-}
+const asyncSleep = time => new Promise(resolve => setTimeout(resolve, time));

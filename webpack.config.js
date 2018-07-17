@@ -1,20 +1,30 @@
 module.exports = {
-  entry: {
-    build: './src/index.js',
-  },
+  entry: ['babel-polyfill', './src/index.js'],
   output: {
     path: __dirname + "/dist",
     filename: "main.js",
     sourcePrefix: "",
-    library: 'cfmml',
-    libraryTarget: 'commonjs2',
+//    library: 'cfmml',
+//    libraryTarget: 'commonjs2',
   },
   module: {
     rules: [
       {
         test: /\.js$/,
         exclude: /node_modules/,
-        use: 'babel-loader'
+        use: [
+          {
+            loader: 'babel-loader',
+            options: {
+              presets: [
+                ['env', {'modules': false}]
+              ],
+              plugins: [
+                "transform-object-rest-spread"
+              ]
+            }
+          }
+        ]
       },
       {
         test: /\.sg$/,
