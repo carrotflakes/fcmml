@@ -206,9 +206,25 @@ function *serialize(commands, context=null) {
       case 'polyphonicNote':
         {
           const duration = length2duration(command.length, context.length);
-          yield {...command, beat: context.beat};
+          let notenums = null;
+          if (command.chord) {
+            notenums = notenumsFromChord(command.chord, context);
+          } else if (command.pitches) {
+            notenums = notenumsFromPitches(command.pitches, context);
+          }
+          for (const notenum of notenums) {
+            yield {
+              type: 'note',
+              track: context.track,
+              beat: context.beat,
+              notenum,
+              notenumTo: null,
+              duration,
+              gatetime: calcGatetime(context, duration),
+              velocity: context.velocity
+            };
+          }
           context.beat += duration;
-          // TODO
         }
         break;
       case 'rest':
@@ -371,6 +387,88 @@ function pitch2notenum(pitch, context) {
          pitch.accidental +
          (octave + 1) * 12 +
          context.transpose;
+}
+
+function notenumsFromChord(chord, context) {
+  let root;
+  if (chord.root.name) {
+    root = pitch2notenum({
+      name: chord.root.name.toLowerCase(),
+      accidental: chord.root.accidental
+    }, {
+      ...context,
+      accidentals: {}
+    });
+  } else {
+    root = pitch2notenum(context, { // TODO
+      name: 'cdefgab'[chord.root.degree - 1],
+      accidental: chord.root.accidental
+    });
+  }
+
+  const notenums = [];
+  let octaveRange = 1;
+  notenums.push(root);
+  if (chord.third !== void(0)) notenums.push(root + 4 + chord.third);
+  if (chord.fifth !== void(0)) notenums.push(root + 7 + chord.fifth);
+  if (chord.sixth !== void(0)) notenums.push(root + 9 + chord.sixth);
+  if (chord.seventh !== void(0)) notenums.push(root + 10 + chord.seventh);
+  if (chord.ninth !== void(0)) {
+    notenums.push(root + 14 + chord.ninth);
+    octaveRange = 2;
+  }
+  if (chord.eleventh !== void(0)) {
+    notenums.push(root + 17 + chord.eleventh);
+    octaveRange = 2;
+  }
+  if (chord.thirteenth !== void(0)) {
+    notenums.push(root + 21 + chord.thirteenth);
+    octaveRange = 2;
+  }
+
+  if (0 < chord.inversion) {
+    for (let i = 0; i < chord.inversion; ++i)
+      notenums[i % notenums.length] += octaveRange * 12;
+  } else {
+    for (let i = 0; chord.inversion < i; --i)
+      notenums[notenums.length - 1 - (-i) % notenums.length] -= octaveRange * 12;
+  }
+  return notenums;
+}
+
+function notenumsFromPitches(pitches, context) {
+  let lastNotenum = -1;
+  const notenums = [];
+  let octave = context.octave;
+  for (const pitchOrOctave of pitches) {
+    switch (pitchOrOctave.type) {
+      case 'octave':
+        octave = pitchOrOctave.number;
+        lastNotenum = -1;
+        break;
+      case 'relativeOctave':
+        octave = clamp(0, 9, octave + pitchOrOctave.number);
+        lastNotenum = -1;
+        break;
+      default:
+        let notenum = pitch2notenum(pitchOrOctave, {
+          ...context,
+          octave
+        });
+        while (notenum <= lastNotenum) {
+          octave = clamp(0, 9, octave + 1);
+          notenum += 12;
+        }
+        notenums.push(notenum);
+        lastNotenum = notenum;
+        break;
+    }
+  }
+  return notenums;
+}
+
+function keyToKeyRoot(key) {
+  return key * (key < 0 ? -5 : 7) % 12;
 }
 
 function clamp(min, max, val) {

@@ -75,10 +75,10 @@ polyphonicNote = {
   (
     chord: chord
   |
-    commands: many<note | octave>
+    pitches: many<pitch | octave>
   )
-  "'"
-  length: (length)
+  "'" _
+  length: length
   type:=polyphonicNote
 }
 
@@ -329,7 +329,7 @@ tensions = ?(
 
 inversion =
   ":"
-  inversion: `(?"-" +[0-9]) -> { return parseInteger($); }
+  inversion: `(?"-" +[0-9]) -> { return parseInt($); }
 
 pitchName = {
   name: `[A-G]
