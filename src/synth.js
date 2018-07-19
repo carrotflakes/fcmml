@@ -5,11 +5,11 @@ export class Synth {
     this.model = model;
   }
 
-  makeOsc(ac, destination) {
+  note(ac, destination, opt) {
     const nodes = [];
     nodes.push(new SimpleOscillator(ac, destination));
-    const osc = new Osc(nodes);
-    return osc;
+    const note = new Note(opt, nodes);
+    return note;
   }
 }
 
@@ -24,31 +24,25 @@ function build(expression) {
   }
 }
 
-export class Osc {
-  constructor(allNodes) {
+export class Note {
+  constructor(opt, allNodes) {
     this.allNodes = allNodes;
     this.roots = [];
     this.releaseTime = Infinity;
-  }
-
-  start(time) {
     for (const node of this.allNodes) {
-      node.start(time); // TODO delay
-    }
-  }
-
-  stop(time) {
-    for (const node of this.allNodes) {
-      node.stop(time);
+      node.start(opt.startTime); // TODO delay
+      node.stop(opt.endTime);
+      node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime);
     }
     //this.releaseTime = 0;
     //this.releaseTime = Math.max(this.releaseTime, releaseTime);
   }
 
-  frequency(start, time, end, endTime) {
-    for (const node of this.allNodes) {
-      node.frequency(start, time, end, endTime);
-    }
+  ended() {
+    return false;
+  }
+
+  tempo(time, spb) {
   }
 
   setParam(name, value, time) {

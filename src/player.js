@@ -26,14 +26,14 @@ export default class Player {
   init() {
     this.mixers = [];
     this.synthes = [];
-    this.oscs = [];
+    this.notes = [];
     for (let i = 0; i < this.music.trackNum; ++i) {
       const mixer = new Mixer(this.ac, this.mixerMaster.getInput());
       mixer.setParam('volume', 1, 0);
       mixer.setParam('pan', 0.5, 0);
       this.mixers[i] = mixer;
       this.synthes[i] = this.defaultSynth();
-      this.oscs[i] = [];
+      this.notes[i] = [];
     }
     this.tempo = 120;
   }
@@ -51,8 +51,10 @@ export default class Player {
       await asyncSleep((time - this.ac.currentTime - this.bufferTime) * 1000);
       this.handleEvent(event, time);
 
-      // remove stoped oscs
-      
+      // remove stoped notes
+      for (const i in this.notes) {
+        this.notes[i] = this.notes[i].filter(x => !x.ended());
+      }
     }
   }
 
@@ -61,25 +63,34 @@ export default class Player {
       case 'note':
         {
           const {track, gatetime} = event;
-          const osc = this.synthes[track].makeOsc(this.ac, this.mixers[track].getInput());
           const endTime = time + gatetime * 60 / this.tempo;
-          osc.start(time);
-          osc.stop(endTime);
-          osc.setParam('v', event.velocity, time);
-          osc.setParam('f', event.frequency, time);
-          osc.frequency(event.frequency, time, event.frequencyTo, endTime);
-          this.oscs[track].push(osc);
+          const note = this.synthes[track].note(
+            this.ac,
+            this.mixers[track].getInput(), {
+              startTime: time,
+              endTime,
+              frequency: event.frequency,
+              frequencyTo: event.frequencyTo,
+            });
+          note.setParam('v', event.velocity, time);
+          note.setParam('f', event.frequency, time);
+          this.notes[track].push(note);
         }
         break;
       case 'tempo':
         this.tempo = event.tempo;
+        for (const ns of this.notes) {
+          for (const note of ns) {
+            ns.tempo(time, 60 / this.tempo);
+          }
+        }
         break;
       case 'param':
         {
           const {track, name, value} = event;
           this.mixers[track].setParam(name, value, time);
-          for (const osc of this.oscs[track]) {
-            osc.setParam(name, value, time);
+          for (const note of this.notes[track]) {
+            note.setParam(name, value, time);
           }
         }
         break;

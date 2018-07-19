@@ -183,9 +183,9 @@ function *serialize(commands, context=null) {
           const notenum = pitch2notenum(pitch, context);
           let notenumTo = null;
           if (pitchTo) {
-            const context = {...context};
-            [...serialize(pitchTo.preCommands, context)];
-            notenumTo = pitch2notenum(pitchTo.pitch, context);
+            const newContext = {...context};
+            [...serialize(pitchTo.preCommands, newContext)];
+            notenumTo = pitch2notenum(pitchTo.pitch, newContext);
           }
           let gatetime = calcGatetime(context, duration);
           if (slur) {
