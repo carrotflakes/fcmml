@@ -128,6 +128,7 @@ function *serialize(commands, context=null) {
     absoluteQuantize: 0,
     transpose: 0,
     accidentals: {},
+    timeRatio: 1
   };
   const parallelEvents = [];
   for (const command of commands) {
@@ -178,7 +179,7 @@ function *serialize(commands, context=null) {
       case 'note':
         {
           const {pitch, pitchTo, length, slur} = command;
-          const duration = length2duration(length, context.length);
+          const duration = length2duration(length, context.length) * context.timeRatio;
           const notenum = pitch2notenum(pitch, context);
           let notenumTo = null;
           if (pitchTo) {
@@ -205,7 +206,7 @@ function *serialize(commands, context=null) {
         break;
       case 'polyphonicNote':
         {
-          const duration = length2duration(command.length, context.length);
+          const duration = length2duration(command.length, context.length) * context.timeRatio;
           let notenums = null;
           if (command.chord) {
             notenums = notenumsFromChord(command.chord, context);
@@ -229,7 +230,7 @@ function *serialize(commands, context=null) {
         break;
       case 'rest':
         {
-          const duration = length2duration(command.length, context.length);
+          const duration = length2duration(command.length, context.length) * context.timeRatio;
           context.beat += duration;
         }
         break;
@@ -309,36 +310,26 @@ function *serialize(commands, context=null) {
         break;
       case 'group':
         const times = Math.max(1, command.times);
-        const rawWholeCommands = [...command.commands, {type: 'pipe'}, ...command.jointCommands];
-        const newContext = {
+        const rawWholeCommands = [...command.commands, ...command.jointCommands];
+        let newContext = {
           ...context,
           beat: 0,
+          timeRatio: 1,
         };
         const wholeCommands = Array.from(serialize(rawWholeCommands, newContext));
         const duration = newContext.beat;
-        const trueDuration = command.length.number !== null ? length2duration(command.length, {}) : duration;
-        const ratio = trueDuration / duration;
-        outer:
+        const trueDuration = (command.length.number !== null ? length2duration(command.length, {}) : duration) * context.timeRatio;
+        const timeRatio = trueDuration / duration;
+        newContext = {
+          ...context,
+          timeRatio
+        };
         for (let i = 0; i < times; ++i) {
-          for (const command of wholeCommands) {
-            if (command.type === 'pipe') {
-              if (i === times - 1) {
-                context.beat += command.beat * ratio;
-                break outer;
-              }
-              break;
-            }
-            const event = {
-              ...command,
-              beat: context.beat + command.beat * ratio
-            };
-            if (event.gatetime !== void(0)) {
-              event.gatetime *= ratio;
-            }
-            parallelEvents.push(event);
-          }
-          context.beat += trueDuration;
+          parallelEvents.push(...serialize(command.commands, newContext));
+          if (i < times - 1)
+            parallelEvents.push(...serialize(command.jointCommands, newContext));
         }
+        context.beat = newContext.beat;
         parallelEvents.sort((x, y) => x.beat - y.beat);
         break;
       case 'parallel':
@@ -409,10 +400,14 @@ function notenumsFromChord(chord, context) {
   const notenums = [];
   let octaveRange = 1;
   notenums.push(root);
-  if (chord.third !== void(0)) notenums.push(root + 4 + chord.third);
-  if (chord.fifth !== void(0)) notenums.push(root + 7 + chord.fifth);
-  if (chord.sixth !== void(0)) notenums.push(root + 9 + chord.sixth);
-  if (chord.seventh !== void(0)) notenums.push(root + 10 + chord.seventh);
+  if (chord.third !== void(0))
+    notenums.push(root + 4 + chord.third);
+  if (chord.fifth !== void(0))
+    notenums.push(root + 7 + chord.fifth);
+  if (chord.sixth !== void(0))
+    notenums.push(root + 9 + chord.sixth);
+  if (chord.seventh !== void(0))
+    notenums.push(root + 10 + chord.seventh);
   if (chord.ninth !== void(0)) {
     notenums.push(root + 14 + chord.ninth);
     octaveRange = 2;

@@ -1,4 +1,5 @@
-import {Synth, Mixer} from './synth.js';
+import {Synth} from './synth.js';
+import {Mixer} from './nodes.js';
 
 export default class Player {
 

@@ -20,6 +20,7 @@ command
 | tempo
 | group
 | segno
+| synth
 
 parallel = {
   command: command
@@ -222,18 +223,63 @@ group = {
   type:=group
 }
 
-
 segno = {
   "$"
   type:=segno
 }
+
+synth = {
+ "%" _
+  assignments: sepBy<{
+    identifier: expIdentifier
+    _ "=" _
+    expression: operator1
+    type:=assignment
+  }, ",">
+  _
+  body: operator1
+}
+
+operator1 = operator<operator2, operator2, `"<-", operator2>
+operator2 = operator<operator2, operator3, `("+" | "-"), operator3>
+operator3 = operator<operator3, operator4, `("*" | "/"), operator4>
+operator4 = factor
+
+operator<left, right, op, next> = {
+  left: left
+  _
+  func: op
+  _
+  right: right
+  type:=call
+} -> {$.arguments = [$.left, $.right]; return $;} | next
+
+factor = {
+  func: expIdentifier
+  _ "(" _
+  arguments: sepBy<operator1, ",">
+  _ ")"
+  type:=call
+|
+  identifier: expIdentifier
+  type:=identifier
+|
+  value: float
+  type:=value
+}
+| (
+  "(" _ operator1 _ ")"
+)
+
+expIdentifier = `([a-z] *[a-z0-9])
+
 //////////
 
-identifier = `([A-Z]*[A-Za-z0-9])
+identifier = `([A-Z] *[A-Za-z0-9])
 
 signedInteger = `([+-]([1-9] *[0-9] | "0")) -> { return parseInt($); }
 unsignedInteger = `([1-9] *[0-9] | "0") -> { return parseInt($); }
-float = `(?[+-] ([1-9] *[0-9] | '0') ?("." ,4*[0-9])) -> { return parseInt($); }
+float = `(?[+-] ([1-9] *[0-9] | '0') ?("." ,16*[0-9])) -> { return parseInt($); }
 
 _ = *(whitespace | comment)
 
