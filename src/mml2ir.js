@@ -3,6 +3,7 @@ export function mml2ir(commands) {
   const newTrack = () => ({
     volume: 1.0,
     pan: 0.5,
+    portament: 0,
     w: 0.0,
     x: 0.0,
     z: 0.0,
@@ -53,6 +54,24 @@ export function mml2ir(commands) {
           beat,
           name: 'pan',
           value: trackParams.pan = clamp(0, 1, trackParams.pan + number / 64)
+        });
+        break;
+      case 'portament':
+        events.push({
+          type: 'param',
+          track,
+          beat,
+          name: 'portament',
+          value: trackParams.portament = number / 1024
+        });
+        break;
+      case 'relativePortament':
+        events.push({
+          type: 'param',
+          track,
+          beat,
+          name: 'portament',
+          value: trackParams.portament = clamp(0, 1, trackParams.portament + number / 1024)
         });
         break;
       case 'synthParam':

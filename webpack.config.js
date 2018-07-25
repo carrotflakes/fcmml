@@ -5,8 +5,8 @@ module.exports = {
     path: __dirname + "/dist",
     filename: "main.js",
     sourcePrefix: "",
-//    library: 'cfmml',
-//    libraryTarget: 'commonjs2',
+    library: 'fcmml',
+    libraryTarget: 'umd',
   },
   module: {
     rules: [

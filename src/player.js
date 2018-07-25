@@ -27,6 +27,7 @@ export default class Player {
     this.mixers = [];
     this.synthes = [];
     this.notes = [];
+    this.lastNotes = [];
     for (let i = 0; i < this.music.trackNum; ++i) {
       const mixer = new Mixer(this.ac, this.mixerMaster.getInput());
       mixer.setParam('volume', 1, 0);
@@ -75,6 +76,7 @@ export default class Player {
           note.setParam('v', event.velocity, time);
           note.setParam('f', event.frequency, time);
           this.notes[track].push(note);
+          this.lastNotes[track] = note;
         }
         break;
       case 'tempo':
@@ -123,7 +125,47 @@ export default class Player {
   }
 
   defaultSynth() {
-    return new Synth();
+    return new Synth({
+      assignments: [],
+      body: {
+        func: "<-",
+        type: "call",
+        arguments: [
+          {
+            func: "gain",
+            arguments: [
+              {
+                func: "lv",
+                arguments: [
+                  {
+                    identifier: "v",
+                    type: "identifier"
+                  }
+                ],
+                type: "call"
+              }
+            ],
+            type: "call"
+          },
+          {
+            func: "sin",
+            arguments: [
+              {
+                func: "fr",
+                arguments: [
+                  {
+                    identifier: "f",
+                    type: "identifier"
+                  }
+                ],
+                type: "call"
+              }
+            ],
+            type: "call"
+          }
+        ]
+      }
+    });
   }
 }
 
