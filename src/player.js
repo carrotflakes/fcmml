@@ -14,9 +14,10 @@ export default class Player {
       throw new Error("Failed to get AudioContext.");
     }
 
-    this.mixerMaster = new Mixer(this.ac, this.ac.destination);
-    this.mixerMaster.setParam('volume', 0.5, 0);
+    this.mixerMaster = new Mixer(this.ac);
+    this.mixerMaster.setParam('volume', 0.1, 0);
     this.mixerMaster.setParam('pan', 0.5, 0);
+    this.mixerMaster.connect(this.ac.destination);
 
     this.bufferTime = opt.bufferTime || 1; // sec
 
@@ -29,9 +30,10 @@ export default class Player {
     this.notes = [];
     this.lastNotes = [];
     for (let i = 0; i < this.music.trackNum; ++i) {
-      const mixer = new Mixer(this.ac, this.mixerMaster.getInput());
+      const mixer = new Mixer(this.ac);
       mixer.setParam('volume', 1, 0);
       mixer.setParam('pan', 0.5, 0);
+      mixer.connect(this.mixerMaster.getInput());
       this.mixers[i] = mixer;
       this.synthes[i] = this.defaultSynth();
       this.notes[i] = [];
@@ -54,7 +56,7 @@ export default class Player {
 
       // remove stoped notes
       for (const i in this.notes) {
-        this.notes[i] = this.notes[i].filter(x => !x.ended());
+        this.notes[i] = this.notes[i].filter(x => !x.ended(this.ac.currentTime));
       }
     }
   }

@@ -1,4 +1,6 @@
 class Node {
+  setParam(name, value, time) {
+  }
 }
 
 export class SimpleOscillator extends Node {
@@ -8,15 +10,17 @@ export class SimpleOscillator extends Node {
     this.osc.type = {sin: 'sine', sqr: 'square', saw: 'sawtooth', tri: 'triangle'}[type];
     this.env = args[0];
     this.env.setAudioParam(this.osc.frequency);
+    this.stack = []; // TODO
   }
 
   start(time, endTime) {
-    this.osc.start(time, endTime); // TODO delay
+    this.osc.start(time); // TODO delay
+    this.osc.stop(endTime);
   }
 
   frequency(start, time, end, endTime) {
-    this.osc.frequency.setValueAtTime(start, time);
-    this.osc.frequency.exponentialRampToValueAtTime(end, endTime);
+    //this.osc.frequency.setValueAtTime(start, time);
+    //this.osc.frequency.exponentialRampToValueAtTime(end, endTime);
   }
 
   setParam(name, value, time) {
@@ -26,19 +30,12 @@ export class SimpleOscillator extends Node {
     }
   }
 
-  setParamTo(name, value, time) {
+  getInput() {
+    return null;
   }
 
   connect(audioNode) {
     this.osc.connect(audioNode);
-  }
-
-  getInput() {
-    return this.osc.frequency;
-  }
-
-  collectNodes() {
-    return [this];
   }
 }
 
@@ -65,19 +62,12 @@ export class Gain extends Node {
     }
   }
 
-  setParamTo(name, value, time) {
-  }
-
-  connect(audioNode) {
-    this.gain.connect(audioNode);
-  }
-
   getInput() {
     return this.gain;
   }
 
-  collectNodes() {
-    return [this];
+  connect(audioNode) {
+    this.gain.connect(audioNode);
   }
 }
 
@@ -96,13 +86,28 @@ class Envelope extends Node {
 export class FrEnvelope extends Envelope {
   constructor(ac, args) {
     super(ac, args);
+    this.expression = args[0];
   }
 
   start(time, endTime) {
   }
 
   frequency(start, time, end, endTime) {
-    this.audioParams.setValueAtTime(start, time);
+    this.audioParams.forEach(x => x.setValueAtTime(start, time));
+  }
+}
+
+export class LvEnvelope extends Envelope {
+  constructor(ac, args) {
+    super(ac, args);
+    this.expression = args[0];
+  }
+
+  start(time, endTime) {
+  }
+
+  frequency(start, time, end, endTime) {
+    this.audioParams.forEach(x => x.setValueAtTime(start, time));
   }
 }
 

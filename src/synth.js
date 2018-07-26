@@ -1,4 +1,4 @@
-import {SimpleOscillator, Gain, FrEnvelope} from './nodes.js';
+import {SimpleOscillator, Gain, FrEnvelope, LvEnvelope} from './nodes.js';
 
 export class Synth {
   constructor(model) {
@@ -6,9 +6,9 @@ export class Synth {
   }
 
   note(ac, destination, opt) {
-    const rootNode = build(this.model, ac);
+    const [rootNode, allNodes] = build(this.model, ac);
     rootNode.connect(destination);
-    return new Note(opt, rootNode);
+    return new Note(opt, rootNode, allNodes);
   }
 }
 
@@ -22,32 +22,38 @@ function build(model, ac) {
     z: {type: 'variable', identifier: 'z'},
   };
   const newAssignments = [...assignments, {identifier: '', expression: body}];
+  const nodes = [];
   for (const {identifier, expression} of newAssignments) {
-    bindings[identifier] = buildExpression(expression, bindings, ac);
+    bindings[identifier] = buildExpression(expression, bindings, nodes, ac);
   }
-  return bindings[''];
+  return [bindings[''], nodes];
 }
 
-function buildExpression(model, bindings, ac) {
+function buildExpression(model, bindings, nodes, ac) {
+  let node;
   switch (model.type) {
     case 'call':
-      const args = model.arguments.map(x => buildExpression(x, bindings, ac));
+      const args = model.arguments.map(x => buildExpression(x, bindings, nodes, ac));
       switch (model.func) {
         case 'sin':
         case 'sqr':
         case 'saw':
         case 'tri':
-          return new SimpleOscillator(ac, model.func, args);
-          break;
+          node = new SimpleOscillator(ac, model.func, args);
+          nodes.push(node);
+          return node;
         case 'gain':
-          return new Gain(ac, args);
-          break;
+          node = new Gain(ac, args);
+          nodes.push(node);
+          return node;
         case 'fr':
-          return new FrEnvelope(ac, args);
-          break;
+          node = new FrEnvelope(ac, args);
+          nodes.push(node);
+          return node;
         case 'lv':
-          //return new LvEnvelope(ac, args);
-          break;
+          node = new LvEnvelope(ac, args);
+          nodes.push(node);
+          return node;
         case 'adsr':
           // TODO
           break
@@ -56,13 +62,14 @@ function buildExpression(model, bindings, ac) {
           //args[1].connect(args[0].getInput());
           // Node<-Node => Node
           args[1].connect(args[0].getInput());
+          return args[0];
           break;
         case '+':
         case '-':
         case '*':
         case '/':
           return {
-            type: 'func',
+            type: 'call',
             func: model.func,
             arguments: args
           }
@@ -77,9 +84,9 @@ function buildExpression(model, bindings, ac) {
 }
 
 export class Note {
-  constructor(opt, rootNodes) {
-    this.rootNode = rootNodes;
-    this.allNodes = this.rootNode.collectNodes();
+  constructor(opt, rootNode, allNodes) {
+    this.rootNode = rootNode;
+    this.allNodes = allNodes;
     this.releaseTime = Infinity;
     for (const node of this.allNodes) {
       node.start(opt.startTime, opt.endTime); // TODO delay
@@ -97,5 +104,8 @@ export class Note {
   }
 
   setParam(name, value, time) {
+    this.allNodes.forEach(node => {
+      node.setParam(name, value, time);
+    });
   }
 }
