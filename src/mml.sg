@@ -238,9 +238,10 @@ synth = {
   }, ",">
   _
   body: operator1
+  type:=synth
 }
 
-operator1 = operator<operator2, operator2, `"<-", operator2>
+operator1 = operator<operator1, operator2, `"<-", operator2>
 operator2 = operator<operator2, operator3, `("+" | "-"), operator3>
 operator3 = operator<operator3, operator4, `("*" | "/"), operator4>
 operator4 = factor

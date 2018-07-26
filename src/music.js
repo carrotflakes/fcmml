@@ -37,7 +37,8 @@ function buildIr(ir) {
         events[i] = {
           type: 'synth',
           beat: events[i].beat,
-          synth: new Synth(events[i].model)
+          track: events[i].track,
+          synth: new Synth(events[i])
         };
         break;
     }
