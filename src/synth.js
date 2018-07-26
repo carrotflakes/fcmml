@@ -63,7 +63,6 @@ function buildExpression(model, bindings, nodes, ac) {
           // Node<-Node => Node
           args[1].connect(args[0].getInput());
           return args[0];
-          break;
         case '+':
         case '-':
         case '*':
@@ -73,7 +72,6 @@ function buildExpression(model, bindings, nodes, ac) {
             func: model.func,
             arguments: args
           }
-          break;
       }
       break;
     case 'identifier':
@@ -97,7 +95,7 @@ export class Note {
   }
 
   ended(time) {
-    return false;
+    return this.releaseTime < time;
   }
 
   tempo(time, spb) {

@@ -81,6 +81,10 @@ class Envelope extends Node {
   setAudioParam(audioParams) {
     this.audioParams.push(audioParams);
   }
+
+  update(value, time) {
+    this.audioParams.forEach(x => x.setValueAtTime(value, time));
+  }
 }
 
 export class FrEnvelope extends Envelope {
@@ -93,7 +97,7 @@ export class FrEnvelope extends Envelope {
   }
 
   frequency(start, time, end, endTime) {
-    this.audioParams.forEach(x => x.setValueAtTime(start, time));
+    this.update(start, time);
   }
 }
 
@@ -107,7 +111,6 @@ export class LvEnvelope extends Envelope {
   }
 
   frequency(start, time, end, endTime) {
-    this.audioParams.forEach(x => x.setValueAtTime(start, time));
   }
 }
 
