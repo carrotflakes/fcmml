@@ -1,5 +1,5 @@
 import {Synth} from './synth.js';
-import {Mixer} from './nodes.js';
+import {Mixer} from './nodes';
 
 export default class Player {
   constructor(music, opt={}) {

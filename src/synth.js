@@ -1,4 +1,4 @@
-import {Node, SimpleOscillator, Gain, Envelope, FrEnvelope, LvEnvelope} from './nodes.js';
+import {Node, SimpleOscillator, Gain, Envelope, FrEnvelope, LvEnvelope} from './nodes';
 
 export class Synth {
   constructor(model) {
@@ -21,51 +21,44 @@ function build(model, ac) {
     x: {type: 'variable', identifier: 'x'},
     z: {type: 'variable', identifier: 'z'},
   };
-  const newAssignments = [...assignments, {identifier: '', expression: body}];
-  const nodes = [];
-  for (const {identifier, expression} of newAssignments) {
-    bindings[identifier] = buildExpression(expression, bindings, nodes, ac);
+  const allNodes = [];
+  for (const {identifier, expression} of assignments) {
+    bindings[identifier] = buildExpression(expression, bindings, allNodes, ac);
   }
-  return [bindings[''], nodes];
+  bindings[''] = buildExpression(body, bindings, allNodes, ac);
+  // TODO collectComposedNodes
+  return [bindings[''], allNodes];
 }
 
-function buildExpression(model, bindings, nodes, ac) {
+function buildExpression(model, bindings, allNodes, ac) {
   let node;
   switch (model.type) {
     case 'call':
-      const args = model.arguments.map(x => buildExpression(x, bindings, nodes, ac));
+      const args = model.arguments.map(x => buildExpression(x, bindings, allNodes, ac));
       switch (model.func) {
         case 'sin':
         case 'sqr':
         case 'saw':
         case 'tri':
           node = new SimpleOscillator(ac, model.func, args);
-          nodes.push(node);
+          allNodes.push(node);
           return node;
         case 'gain':
           node = new Gain(ac, args);
-          nodes.push(node);
+          allNodes.push(node);
           return node;
         case 'fr':
-          node = new FrEnvelope(ac, args);
-          nodes.push(node);
-          return node;
         case 'lv':
-          node = new LvEnvelope(ac, args);
-          nodes.push(node);
-          return node;
         case 'adsr':
-          // TODO
-          break
+          node = new {
+            fr: FrEnvelope,
+            lv: LvEnvelope,
+            adsr: null,
+          }[model.func](ac, args);
+          allNodes.push(node);
+          return node;
         case '<-':
-          function collectRightNodes(expr) {
-            if (expr.call === 'call' && expr.func === '+') {
-              return [...collectRightNodes(expr.arguments[0]), ...collectRightNodes(expr.arguments[1])];
-            } else if (expr instanceof Node) {
-              return [expr];
-            }
-          }
-          const rightNodes = collectRightNodes(args[1]);
+          const rightNodes = collectComposedNodes(args[1]);
           if (args[0] instanceof Envelope) {
             // Envelope<-Node => Envelope
             for (const node of rightNodes) {
@@ -96,18 +89,26 @@ function buildExpression(model, bindings, nodes, ac) {
   }
 }
 
+function collectComposedNodes(expr) {
+  if (expr.call === 'call' && expr.func === '+') {
+    return [...collectComposedNodes(expr.arguments[0]), ...collectComposedNodes(expr.arguments[1])];
+  } else if (expr instanceof Node) {
+    return [expr];
+  }
+}
+
 export class Note {
   constructor(opt, rootNode, allNodes) {
     this.rootNode = rootNode;
     this.allNodes = allNodes;
-    //this.releaseTime = Infinity;
-    this.releaseTime = opt.endTime;
     for (const node of this.allNodes) {
-      node.start(opt.startTime, opt.endTime); // TODO delay
+      node.start(opt.startTime); // TODO delay
+      node.stop(opt.endTime);
       node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime);
     }
-    //this.releaseTime = 0;
-    //this.releaseTime = Math.max(this.releaseTime, releaseTime);
+    this.endTime = Math.max(...this.allNodes.filter(n => n instanceof Envelope).map(n => n.endTime));
+    // TODO fix ↑
+    this.allNodes.forEach(n => n.forceStop(this.endTime));
   }
 
   forceStop() {
@@ -115,15 +116,15 @@ export class Note {
   }
 
   ended(time) {
-    return this.releaseTime < time;
+    return this.endTime <= time;
   }
 
   tempo(time, spb) {
   }
 
-  setParam(name, value, time) {
+  setParam(param, time) {
     this.allNodes.forEach(node => {
-      node.setParam(name, value, time);
+      node.setParam(param, time);
     });
   }
 }

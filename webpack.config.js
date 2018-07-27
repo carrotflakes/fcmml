@@ -7,6 +7,7 @@ module.exports = {
     sourcePrefix: "",
     library: 'fcmml',
     libraryTarget: 'umd',
+    globalObject: 'this'
   },
   module: {
     rules: [
