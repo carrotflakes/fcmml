@@ -2,7 +2,6 @@ import {Synth} from './synth.js';
 import {Mixer} from './nodes.js';
 
 export default class Player {
-
   constructor(music, opt={}) {
     this.music = music;
 
@@ -15,8 +14,10 @@ export default class Player {
     }
 
     this.mixerMaster = new Mixer(this.ac);
-    this.mixerMaster.setParam('volume', 0.1, 0);
-    this.mixerMaster.setParam('pan', 0.5, 0);
+    this.mixerMaster.setParam({
+      volume: 0.25,
+      pan: 0.5
+    }, 0);
     this.mixerMaster.connect(this.ac.destination);
 
     this.bufferTime = opt.bufferTime || 1; // sec
@@ -31,17 +32,21 @@ export default class Player {
     this.lastNotes = [];
     for (let i = 0; i < this.music.trackNum; ++i) {
       const mixer = new Mixer(this.ac);
-      mixer.setParam('volume', 1, 0);
-      mixer.setParam('pan', 0.5, 0);
+      mixer.setParam({
+        volume: 1,
+        pan: 0.5
+      }, 0);
       mixer.connect(this.mixerMaster.getInput());
       this.mixers[i] = mixer;
       this.synthes[i] = this.defaultSynth();
       this.notes[i] = [];
     }
     this.tempo = 120;
+    this._stop = false;
   }
 
   async play() {
+    this._stop = false;
     let time = this.ac.currentTime + 0.01;
     let beat = 0;
     for (const event of this.seeker(this.music.events)) {
@@ -58,7 +63,20 @@ export default class Player {
       for (const i in this.notes) {
         this.notes[i] = this.notes[i].filter(x => !x.ended(this.ac.currentTime));
       }
+
+      if (this._stop) {
+        for (const ns of this.notes) {
+          for (const n of ns) {
+            n.forceStop();
+          }
+        }
+        return;
+      }
     }
+  }
+
+  stop() {
+    this._stop = true;
   }
 
   handleEvent(event, time) {
@@ -75,8 +93,10 @@ export default class Player {
               frequency: event.frequency,
               frequencyTo: event.frequencyTo,
             });
-          note.setParam('v', event.velocity, time);
-          note.setParam('f', event.frequency, time);
+          note.setParam({
+            v: event.velocity,
+            f: event.frequency
+          }, time);
           this.notes[track].push(note);
           this.lastNotes[track] = note;
         }
@@ -92,9 +112,10 @@ export default class Player {
       case 'param':
         {
           const {track, name, value} = event;
-          this.mixers[track].setParam(name, value, time);
+          const param = {[name]: value};
+          this.mixers[track].setParam(param, time);
           for (const note of this.notes[track]) {
-            note.setParam(name, value, time);
+            note.setParam(param, time);
           }
         }
         break;
@@ -150,7 +171,7 @@ export default class Player {
             type: "call"
           },
           {
-            func: "sin",
+            func: "sqr",
             arguments: [
               {
                 func: "fr",

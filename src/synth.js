@@ -1,4 +1,4 @@
-import {SimpleOscillator, Gain, FrEnvelope, LvEnvelope} from './nodes.js';
+import {Node, SimpleOscillator, Gain, Envelope, FrEnvelope, LvEnvelope} from './nodes.js';
 
 export class Synth {
   constructor(model) {
@@ -58,10 +58,25 @@ function buildExpression(model, bindings, nodes, ac) {
           // TODO
           break
         case '<-':
-          // Envelope<-Node => Envelope
-          //args[1].connect(args[0].getInput());
-          // Node<-Node => Node
-          args[1].connect(args[0].getInput());
+          function collectRightNodes(expr) {
+            if (expr.call === 'call' && expr.func === '+') {
+              return [...collectRightNodes(expr.arguments[0]), ...collectRightNodes(expr.arguments[1])];
+            } else if (expr instanceof Node) {
+              return [expr];
+            }
+          }
+          const rightNodes = collectRightNodes(args[1]);
+          if (args[0] instanceof Envelope) {
+            // Envelope<-Node => Envelope
+            for (const node of rightNodes) {
+              args[0].addModulator(node);
+            }
+          } else {
+            // Node<-Node => Node
+            for (const node of rightNodes) {
+              node.connect(args[0].getInput());
+            }
+          }
           return args[0];
         case '+':
         case '-':
@@ -85,13 +100,18 @@ export class Note {
   constructor(opt, rootNode, allNodes) {
     this.rootNode = rootNode;
     this.allNodes = allNodes;
-    this.releaseTime = Infinity;
+    //this.releaseTime = Infinity;
+    this.releaseTime = opt.endTime;
     for (const node of this.allNodes) {
       node.start(opt.startTime, opt.endTime); // TODO delay
       node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime);
     }
     //this.releaseTime = 0;
     //this.releaseTime = Math.max(this.releaseTime, releaseTime);
+  }
+
+  forceStop() {
+    this.allNodes.forEach(node => node.forceStop());
   }
 
   ended(time) {

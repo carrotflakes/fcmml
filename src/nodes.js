@@ -1,5 +1,8 @@
-class Node {
-  setParam(name, value, time) {
+export class Node {
+  setParam(param, time) {
+  }
+
+  forceStop() {
   }
 }
 
@@ -10,7 +13,6 @@ export class SimpleOscillator extends Node {
     this.osc.type = {sin: 'sine', sqr: 'square', saw: 'sawtooth', tri: 'triangle'}[type];
     this.env = args[0];
     this.env.setAudioParam(this.osc.frequency);
-    this.stack = []; // TODO
   }
 
   start(time, endTime) {
@@ -18,12 +20,16 @@ export class SimpleOscillator extends Node {
     this.osc.stop(endTime);
   }
 
+  forceStop() {
+    this.osc.stop();
+  }
+
   frequency(start, time, end, endTime) {
     //this.osc.frequency.setValueAtTime(start, time);
     //this.osc.frequency.exponentialRampToValueAtTime(end, endTime);
   }
 
-  setParam(name, value, time) {
+  setParam(param, time) {
     switch(name) {
 
         // 
@@ -55,7 +61,7 @@ export class Gain extends Node {
   }
 
 
-  setParam(name, value, time) {
+  setParam(param, time) {
     switch(name) {
 
         // 
@@ -72,14 +78,20 @@ export class Gain extends Node {
 }
 
 
-class Envelope extends Node {
+export class Envelope extends Node {
   constructor(ac, args) {
     super(ac, args);
+    this.modulators = [];
     this.audioParams = [];
+  }
+
+  addModulator(node) {
+    this.modulators.push(node);
   }
 
   setAudioParam(audioParams) {
     this.audioParams.push(audioParams);
+    this.modulators.forEach(x => x.connect(audioParams));
   }
 
   update(value, time) {
@@ -97,7 +109,7 @@ export class FrEnvelope extends Envelope {
   }
 
   frequency(start, time, end, endTime) {
-    this.update(start, time);
+    this.update(evalExpr(this.expression, {f: start}), time);
   }
 }
 
@@ -108,6 +120,7 @@ export class LvEnvelope extends Envelope {
   }
 
   start(time, endTime) {
+    this.update(evalExpr(this.expression, {v: 0.75}), time);
   }
 
   frequency(start, time, end, endTime) {
@@ -125,14 +138,16 @@ export class Mixer {
   start(time) {
   }
 
-  setParam(name, value, time) {
-    switch (name) {
-      case 'volume':
-        this.gain.gain.setValueAtTime(volumeToGainValue(value), time);
-        break;
-      case 'pan':
-        this.panner.pan.setValueAtTime(value * 2 - 1, time);
-        break;
+  setParam(param, time) {
+    for (const [key, value] of Object.entries(param)) {
+      switch (key) {
+        case 'volume':
+          this.gain.gain.setValueAtTime(volumeToGainValue(value), time);
+          break;
+        case 'pan':
+          this.panner.pan.setValueAtTime(value * 2 - 1, time);
+          break;
+      }
     }
   }
 
@@ -142,6 +157,39 @@ export class Mixer {
 
   connect(audioNode) {
     this.panner.connect(audioNode);
+  }
+}
+
+
+function evalExpr(expr, context) {
+  switch (expr.type) {
+    case 'call':
+      const args = expr.arguments.map(x => evalExpr(x, context));
+      switch (expr.func) {
+        case '+':
+          if (args.length === 2) {
+            return args[0] + args[1];
+          }
+        case '-':
+          if (args.length === 1) {
+            return -args[0];
+          } else if (args.length === 2) {
+            return args[0] - args[1];
+          }
+        case '*':
+          if (args.length === 2) {
+            return args[0] * args[1];
+          }
+        case '/':
+          if (args.length === 2) {
+            return args[0] / args[1];
+          }
+      }
+      break;
+    case 'variable':
+      return context[expr.identifier];
+    case 'value':
+      return expr.value;
   }
 }
 

@@ -3,5 +3,22 @@
   <button id="play">play</button>
   <script src="./main.js"></script>
   <script>
+   let player = null;
+
+   function play() {
+     if (player) {
+       player.stop();
+     }
+
+     const srcEl = document.getElementById('src');
+     const src = srcEl.value;
+     const music = fcmml.Music.fromMml(src);
+     console.log(music.events);
+     player = new fcmml.Player(music);
+     player.play();
+   }
+
+   document.getElementById('play').onclick = play;
+
   </script>
 </body>

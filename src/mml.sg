@@ -188,11 +188,11 @@ pan = {
 }
 
 synthParam = {
-  name: `("w" | "x") _
+  name: `("w" | "x" | "z") _
   number: signedInteger
   type:=relativeSynthParam
 |
-  name: `("w" | "x") _
+  name: `("w" | "x" | "z") _
   number: (unsignedInteger | \0)
   type:=synthParam
 }
@@ -241,10 +241,16 @@ synth = {
   type:=synth
 }
 
-operator1 = operator<operator1, operator2, `"<-", operator2>
+operator1 = operator<operator2, operator1, `"<-", operator2>
 operator2 = operator<operator2, operator3, `("+" | "-"), operator3>
 operator3 = operator<operator3, operator4, `("*" | "/"), operator4>
-operator4 = factor
+operator4 = {
+  func: `"-"
+  _
+  arguments: @operator4
+  type:=call
+} | operator5
+operator5 = factor
 
 operator<left, right, op, next> = {
   left: left
@@ -255,7 +261,11 @@ operator<left, right, op, next> = {
   type:=call
 } -> {$.arguments = [$.left, $.right]; return $;} | next
 
-factor = {
+factor = (
+  "(" _
+  operator1
+  _ ")"
+) | {
   func: expIdentifier
   _ "(" _
   arguments: sepBy<operator1, ",">
