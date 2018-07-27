@@ -22,6 +22,10 @@ export class Envelope extends Node {
     this.audioParams.forEach(x => x.setValueAtTime(value, time));
   }
 
+  stop(time) {
+    this._endTime = time;
+  }
+
   get endTime() {
     return this._endTime;
   }
@@ -31,10 +35,6 @@ export class FrEnvelope extends Envelope {
   constructor(ac, args) {
     super(ac, args);
     this.expression = args[0];
-  }
-
-  stop(time) {
-    this._endTime = time;
   }
 
   frequency(start, time, end, endTime) {
@@ -51,13 +51,6 @@ export class LvEnvelope extends Envelope {
   start(time) {
     this.update(evalExpr(this.expression, {y: 0.75}), time);
   }
-
-  stop(time) {
-    this._endTime = time;
-  }
-
-  frequency(start, time, end, endTime) {
-  }
 }
 
 export class AdsrEnvelope extends Envelope {
@@ -70,14 +63,11 @@ export class AdsrEnvelope extends Envelope {
     this.release = args[4];
   }
 
-  start(time, endTime) {
+  start(time) {
     this.update(evalExpr(this.expression, {y: 0.75}), time);
   }
 
   stop(time) {
     this._endTime = time;
-  }
-
-  frequency(start, time, end, endTime) {
   }
 }

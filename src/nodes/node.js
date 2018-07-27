@@ -13,6 +13,9 @@ export class Node {
   forceStop(time) {
   }
 
+  frequency(start, time, end, endTime) {
+  }
+
   setParam(param, time) {
   }
 }
@@ -56,9 +59,6 @@ export class Gain extends Node {
     this.gain = ac.createGain();
     this.env = args[0];
     this.env.setAudioParam(this.gain.gain);
-  }
-
-  frequency(start, time, end, endTime) {
   }
 
   getInput() {
