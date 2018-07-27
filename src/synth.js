@@ -16,9 +16,9 @@ function build(model, ac) {
   const {assignments, body} = model;
   const bindings = {
     f: {type: 'variable', identifier: 'f'},
-    v: {type: 'variable', identifier: 'v'},
     w: {type: 'variable', identifier: 'w'},
     x: {type: 'variable', identifier: 'x'},
+    y: {type: 'variable', identifier: 'y'},
     z: {type: 'variable', identifier: 'z'},
   };
   const allNodes = [];
@@ -99,16 +99,25 @@ function collectComposedNodes(expr) {
 
 export class Note {
   constructor(opt, rootNode, allNodes) {
+    this.endBeat = opt.endBeat;
+    this.param = opt.param;
     this.rootNode = rootNode;
     this.allNodes = allNodes;
     for (const node of this.allNodes) {
       node.start(opt.startTime); // TODO delay
-      node.stop(opt.endTime);
       node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime);
+    }
+    this.stoped = false;
+  }
+
+  stop(time) {
+    for (const node of this.allNodes) {
+      node.stop(time);
     }
     this.endTime = Math.max(...this.allNodes.filter(n => n instanceof Envelope).map(n => n.endTime));
     // TODO fix ↑
     this.allNodes.forEach(n => n.forceStop(this.endTime));
+    this.stoped = true;
   }
 
   forceStop() {
@@ -123,8 +132,12 @@ export class Note {
   }
 
   setParam(param, time) {
+    const overridedParam = {
+      ...param,
+      ...this.param
+    };
     this.allNodes.forEach(node => {
-      node.setParam(param, time);
+      node.setParam(overridedParam, time);
     });
   }
 }

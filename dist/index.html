@@ -1,6 +1,7 @@
 <body>
   <textarea id="src" rows="50" cols="100"></textarea>
   <button id="play">play</button>
+  <button id="stop">stop</button>
   <script src="./main.js"></script>
   <script>
    let player = null;
@@ -18,7 +19,14 @@
      player.play();
    }
 
+   function stop() {
+     if (player) {
+       player.stop();
+     }
+   }
+
    document.getElementById('play').onclick = play;
+   document.getElementById('stop').onclick = stop;
 
   </script>
 </body>

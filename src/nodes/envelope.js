@@ -49,7 +49,7 @@ export class LvEnvelope extends Envelope {
   }
 
   start(time) {
-    this.update(evalExpr(this.expression, {v: 0.75}), time);
+    this.update(evalExpr(this.expression, {y: 0.75}), time);
   }
 
   stop(time) {
@@ -71,7 +71,7 @@ export class AdsrEnvelope extends Envelope {
   }
 
   start(time, endTime) {
-    this.update(evalExpr(this.expression, {v: 0.75}), time);
+    this.update(evalExpr(this.expression, {y: 0.75}), time);
   }
 
   stop(time) {

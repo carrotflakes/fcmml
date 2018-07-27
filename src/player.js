@@ -21,108 +21,138 @@ export default class Player {
     this.mixerMaster.connect(this.ac.destination);
 
     this.bufferTime = opt.bufferTime || 1; // sec
-
-    this.init();
   }
 
   init() {
-    this.mixers = [];
-    this.synthes = [];
-    this.notes = [];
-    this.lastNotes = [];
+    this.tracks = [];
     for (let i = 0; i < this.music.trackNum; ++i) {
-      const mixer = new Mixer(this.ac);
-      mixer.setParam({
+      const param = {
         volume: 1,
-        pan: 0.5
-      }, 0);
+        pan: 0.5,
+        f: null,
+        w: 0,
+        x: 0,
+        y: null,
+        z: 0,
+      };
+      const mixer = new Mixer(this.ac);
+      mixer.setParam(param, 0);
       mixer.connect(this.mixerMaster.getInput());
-      this.mixers[i] = mixer;
-      this.synthes[i] = this.defaultSynth();
-      this.notes[i] = [];
+      this.tracks[i] = {
+        mixer,
+        synth: this.defaultSynth(),
+        param,
+        notes: [],
+        lastNote: null,
+      };
     }
     this.tempo = 120;
     this._stop = false;
   }
 
   async play() {
-    this._stop = false;
+    this.init();
     let time = this.ac.currentTime + 0.01;
     let beat = 0;
     for (const event of this.seeker(this.music.events)) {
       if (event.beat < beat) {
+        // segno detected
         beat = event.beat;
       }
+      const oldBeat = beat;
       const dTime = (event.beat - beat) * 60 / this.tempo;
       beat = event.beat;
       time += dTime;
-      await asyncSleep((time - this.ac.currentTime - this.bufferTime) * 1000);
-      this.handleEvent(event, time);
 
-      // remove stoped notes
-      for (const i in this.notes) {
-        this.notes[i] = this.notes[i].filter(x => !x.ended(this.ac.currentTime));
-      }
-
-      if (this._stop) {
-        for (const ns of this.notes) {
-          for (const n of ns) {
-            n.forceStop();
+      // stop notes
+      for (const track of this.tracks) {
+        for (const note of track.notes) {
+          if (!note.stoped && note.endBeat <= beat) {
+            note.stop(time - dTime + (note.endBeat - oldBeat) * 60 / this.tempo);
           }
         }
+      }
+
+      await asyncSleep((time - this.ac.currentTime - this.bufferTime) * 1000);
+
+      if (this._stop) {
         return;
+      }
+
+      this.handleEvent(event, beat, time);
+
+      // remove stoped notes
+      for (const track of this.tracks) {
+        track.notes = track.notes.filter(x => !x.ended(this.ac.currentTime));
+      }
+    }
+
+    // stop notes
+    for (const track of this.tracks) {
+      for (const note of track.notes) {
+        if (!note.stoped) {
+          note.stop(time + (note.endBeat - beat) * 60 / this.tempo);
+        }
       }
     }
   }
 
   stop() {
     this._stop = true;
+    for (const track of this.tracks) {
+      for (const note of track.notes) {
+        note.forceStop();
+      }
+    }
   }
 
-  handleEvent(event, time) {
+  handleEvent(event, beat, time) {
     switch (event.type) {
       case 'note':
         {
-          const {track, gatetime} = event;
-          const endTime = time + gatetime * 60 / this.tempo;
-          const note = this.synthes[track].note(
+          const track = this.tracks[event.track];
+          const endTime = time + event.gatetime * 60 / this.tempo;
+          const note = track.synth.note(
             this.ac,
-            this.mixers[track].getInput(), {
+            track.mixer.getInput(),
+            {
+              endBeat: beat + event.gatetime,
               startTime: time,
               endTime,
               frequency: event.frequency,
               frequencyTo: event.frequencyTo,
+              param: {
+                f: event.frequency,
+                y: event.velocity,
+              },
             });
-          note.setParam({
-            v: event.velocity,
-            f: event.frequency
-          }, time);
-          this.notes[track].push(note);
-          this.lastNotes[track] = note;
+          note.setParam(track.param);
+          track.notes.push(note);
+          track.lastNotes = note;
         }
         break;
       case 'tempo':
         this.tempo = event.tempo;
-        for (const ns of this.notes) {
-          for (const note of ns) {
-            ns.tempo(time, 60 / this.tempo);
+        for (const track of this.tracks) {
+          for (const note of track.notes) {
+            note.tempo(60 / this.tempo, time);
           }
         }
         break;
       case 'param':
         {
-          const {track, name, value} = event;
-          const param = {[name]: value};
-          this.mixers[track].setParam(param, time);
-          for (const note of this.notes[track]) {
-            note.setParam(param, time);
+          const {track: trackId, name, value} = event;
+          const track = this.tracks[trackId];
+          track.param[name] = value;
+          track.mixer.setParam(track.param, time);
+          for (const note of track.notes) {
+            note.setParam(track.param, time);
           }
         }
         break;
       case 'synth':
         {
-          const {track, synth} = event;
-          this.synthes[track] = synth;
+          this.tracks[event.track].synth = event.synth;
         }
         break;
     }
@@ -161,7 +191,7 @@ export default class Player {
                 func: "lv",
                 arguments: [
                   {
-                    identifier: "v",
+                    identifier: "y",
                     type: "identifier"
                   }
                 ],
