@@ -290,7 +290,7 @@ identifier = `([A-Z] *[A-Za-z0-9])
 
 signedInteger = `([+-]([1-9] *[0-9] | "0")) -> { return parseInt($); }
 unsignedInteger = `([1-9] *[0-9] | "0") -> { return parseInt($); }
-float = `(?[+-] ([1-9] *[0-9] | '0') ?("." ,16*[0-9])) -> { return parseInt($); }
+float = `(?[+-] ([1-9] *[0-9] | '0') ?("." ,16*[0-9])) -> { return parseFloat($); }
 
 _ = *(whitespace | comment)
 
