@@ -1,19 +1,16 @@
 import {volumeToGainValue} from './util.js';
 
 export class Node {
-  setParam(param, time) {
+  start(time, param) {
   }
 
-  start(time) {
-  }
-
-  stop(time) {
+  stop(time, param) {
   }
 
   forceStop(time) {
   }
 
-  frequency(start, time, end, endTime) {
+  frequency(start, time, end, endTime, param) {
   }
 
   setParam(param, time) {
@@ -30,17 +27,12 @@ export class SimpleOscillator extends Node {
     this.env.setAudioParam(this.osc.frequency);
   }
 
-  start(time) {
+  start(time, param) {
     this.osc.start(time); // TODO delay
   }
 
   forceStop(time) {
     this.osc.stop(time);
-  }
-
-  frequency(start, time, end, endTime) {
-    //this.osc.frequency.setValueAtTime(start, time);
-    //this.osc.frequency.exponentialRampToValueAtTime(end, endTime);
   }
 
   getInput() {

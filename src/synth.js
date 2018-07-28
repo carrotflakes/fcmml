@@ -1,4 +1,12 @@
-import {Node, SimpleOscillator, Gain, Envelope, FrEnvelope, LvEnvelope} from './nodes';
+import {
+  Node,
+  SimpleOscillator,
+  Gain,
+  Envelope,
+  FrEnvelope,
+  LvEnvelope,
+  AdsrEnvelope,
+} from './nodes';
 
 export class Synth {
   constructor(model) {
@@ -53,7 +61,7 @@ function buildExpression(model, bindings, allNodes, ac) {
           node = new {
             fr: FrEnvelope,
             lv: LvEnvelope,
-            adsr: null,
+            adsr: AdsrEnvelope,
           }[model.func](ac, args);
           allNodes.push(node);
           return node;
@@ -104,15 +112,15 @@ export class Note {
     this.rootNode = rootNode;
     this.allNodes = allNodes;
     for (const node of this.allNodes) {
-      node.start(opt.startTime); // TODO delay
-      node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime);
+      node.start(opt.startTime, this.param); // TODO delay
+      node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime, this.param);
     }
     this.stoped = false;
   }
 
   stop(time) {
     for (const node of this.allNodes) {
-      node.stop(time);
+      node.stop(time, this.param);
     }
     this.endTime = Math.max(...this.allNodes.filter(n => n instanceof Envelope).map(n => n.endTime));
     // TODO fix ↑
@@ -132,12 +140,12 @@ export class Note {
   }
 
   setParam(param, time) {
-    const overridedParam = {
-      ...param,
-      ...this.param
+    this.param = {
+      ...this.param,
+      ...param
     };
     this.allNodes.forEach(node => {
-      node.setParam(overridedParam, time);
+      node.setParam(thi.param, time);
     });
   }
 }

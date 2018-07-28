@@ -122,11 +122,11 @@ export default class Player {
               frequency: event.frequency,
               frequencyTo: event.frequencyTo,
               param: {
+                ...track.param,
                 f: event.frequency,
                 y: event.velocity,
               },
             });
-          note.setParam(track.param);
           track.notes.push(note);
           track.lastNotes = note;
         }
