@@ -15,8 +15,9 @@ export class Synth {
 
   note(ac, destination, opt) {
     const [rootNode, allNodes] = build(this.model, ac);
-    rootNode.connect(destination);
-    return new Note(opt, rootNode, allNodes);
+    const rootNodes = collectComposedNodes(rootNode);
+    rootNodes.forEach(n => n.connect(destination));
+    return new Note(opt, rootNodes, allNodes);
   }
 }
 
@@ -91,6 +92,9 @@ function buildExpression(model, bindings, allNodes, ac) {
       }
       break;
     case 'identifier':
+      if (!(model.identifier in bindings)) {
+        throw Error('Identifier not found: ' + JSON.stringify(model.identifier));
+      }
       return bindings[model.identifier];
     case 'value':
       return model;
@@ -106,21 +110,23 @@ function collectComposedNodes(expr) {
 }
 
 export class Note {
-  constructor(opt, rootNode, allNodes) {
+  constructor(opt, rootNodes, allNodes) {
+    this.startTime = opt.startTime;
     this.endBeat = opt.endBeat;
     this.param = opt.param;
-    this.rootNode = rootNode;
+    this.rootNodes = rootNodes;
     this.allNodes = allNodes;
-    for (const node of this.allNodes) {
-      node.start(opt.startTime, this.param); // TODO delay
-      node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime, this.param);
-    }
     this.stoped = false;
+
+    for (const node of this.allNodes) {
+      node.start(opt.startTime, this); // TODO delay
+      node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime, this);
+    }
   }
 
   stop(time) {
     for (const node of this.allNodes) {
-      node.stop(time, this.param);
+      node.stop(time, this);
     }
     this.endTime = Math.max(...this.allNodes.filter(n => n instanceof Envelope).map(n => n.endTime));
     // TODO fix ↑
@@ -145,7 +151,7 @@ export class Note {
       ...param
     };
     this.allNodes.forEach(node => {
-      node.setParam(thi.param, time);
+      node.setParam(this.param, time, this);
     });
   }
 }

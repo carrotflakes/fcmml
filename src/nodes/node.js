@@ -1,19 +1,19 @@
 import {volumeToGainValue} from './util.js';
 
 export class Node {
-  start(time, param) {
+  start(time, note) {
   }
 
-  stop(time, param) {
+  stop(time, note) {
   }
 
   forceStop(time) {
   }
 
-  frequency(start, time, end, endTime, param) {
+  frequency(start, time, end, endTime, note) {
   }
 
-  setParam(param, time) {
+  setParam(param, time, note) {
   }
 }
 
@@ -27,7 +27,7 @@ export class SimpleOscillator extends Node {
     this.env.setAudioParam(this.osc.frequency);
   }
 
-  start(time, param) {
+  start(time, note) {
     this.osc.start(time); // TODO delay
   }
 
@@ -70,7 +70,7 @@ export class Mixer {
     this.gain.connect(this.panner);
   }
 
-  setParam(param, time) {
+  setParam(param, time, note) {
     for (const [key, value] of Object.entries(param)) {
       switch (key) {
         case 'volume':

@@ -1,5 +1,5 @@
 import {Node} from './node.js';
-import {evalExpr} from './util.js';
+import {evalExpr, interpolateExponentialRamp} from './util.js';
 
 export class Envelope extends Node {
   constructor(ac, args) {
@@ -30,7 +30,7 @@ export class Envelope extends Node {
     this.audioParams.forEach(x => x.cancelScheduledValues(time));
   }
 
-  stop(time) {
+  stop(time, note) {
     this._endTime = time;
   }
 
@@ -45,13 +45,13 @@ export class FrEnvelope extends Envelope {
     this.frequecyExpr = args[0];
   }
 
-  frequency(start, time, end, endTime, param) {
+  frequency(start, time, end, endTime, note) {
     this.setValueAtTime(evalExpr(this.frequecyExpr, {
-      ...param,
+      ...note.param,
       f: start
     }), time);
     this.exponentialRampToValueAtTime(evalExpr(this.frequecyExpr, {
-      ...param,
+      ...note.param,
       f: end
     }), endTime)
   }
@@ -63,11 +63,11 @@ export class LvEnvelope extends Envelope {
     this.levelExpr = args[0];
   }
 
-  start(time, param) {
-    this.setValueAtTime(evalExpr(this.levelExpr, param), time);
+  start(time, note) {
+    this.setValueAtTime(evalExpr(this.levelExpr, note.param), time);
   }
 
-  setParam(param, time) {
+  setParam(param, time, note) {
     this.setValueAtTime(evalExpr(this.levelExpr, param), time);
   }
 }
@@ -82,26 +82,34 @@ export class AdsrEnvelope extends Envelope {
     this.releaseExpr = args[4];
   }
 
-  start(time, param) {
-    this.startTime = time; // XXX
+  start(time, note) {
+    const param = note.param;
     this.level = evalExpr(this.levelExpr, param);
-    this.attack = clamp(0, Infinity, evalExpr(this.attackExpr, param) * 0.001);
-    this.decay = clamp(0, Infinity, evalExpr(this.decayExpr, param) * 0.001);
-    this.sustain = clamp(0, 1, evalExpr(this.sustainExpr, param));
-    this.release = clamp(0, Infinity, evalExpr(this.releaseExpr, param) * 0.001);
+    this.attack = clamp(TIME_EPS, Infinity, evalExpr(this.attackExpr, param) * 0.001);
+    this.decay = clamp(TIME_EPS, Infinity, evalExpr(this.decayExpr, param) * 0.001);
+    this.sustain = clamp(GAIN_EPS, 1, evalExpr(this.sustainExpr, param));
+    this.release = clamp(TIME_EPS, Infinity, evalExpr(this.releaseExpr, param) * 0.001);
 
-    this.setValueAtTime(0, time);
+    this.setValueAtTime(GAIN_EPS, time);
     this.exponentialRampToValueAtTime(this.level, time + this.attack);
     this.exponentialRampToValueAtTime(this.level * this.sustain, time + this.attack + this.decay);
   }
 
-  stop(time, param) {
+  stop(time, note) {
+    const param = note.param;
     this._endTime = time + this.release;
 
     this.cancelScheduledValues(time);
-    if (time <= this.startTime + this.attack) {
-      //this.exponentialRampToValueAtTime(this.level *
+    if (time <= note.startTime + this.attack) {
+      const v = this.level * interpolateExponentialRamp(GAIN_EPS, 1, (time - note.startTime) / this.attack);
+      this.exponentialRampToValueAtTime(v, time);
+    } else if (time < note.startTime + this.attack + this.decay) {
+      const v = this.level * interpolateExponentialRamp(1, this.sustain, (time - note.startTime - this.attack) / this.decay);
+      this.exponentialRampToValueAtTime(v, time);
+    } else {
+      this.setValueAtTime(this.level * this.sustain, time);
     }
+    this.exponentialRampToValueAtTime(0 < this.level ? GAIN_EPS : -GAIN_EPS, this._endTime);
   }
 }
 
@@ -109,3 +117,6 @@ export class AdsrEnvelope extends Envelope {
 function clamp(min, max, val) {
   return Math.max(min, Math.min(max, val));
 }
+
+const TIME_EPS = 0.0000001;
+const GAIN_EPS = 0.01

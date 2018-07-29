@@ -40,3 +40,7 @@ export function volumeToGainValue(v) {
 function dbToGainValue(v) {
   return Math.exp(v * Math.LN10 / 20);
 }
+
+export function interpolateExponentialRamp(y1, y2, x) {
+  return Math.exp(Math.log(y1) * (1 - x) + Math.log(y2) * x);
+}
