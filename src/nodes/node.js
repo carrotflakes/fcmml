@@ -1,4 +1,4 @@
-import {volumeToGainValue} from './util.js';
+import {evalExpr, volumeToGainValue} from './util.js';
 
 export class Node {
   start(time, note) {
@@ -25,10 +25,12 @@ export class SimpleOscillator extends Node {
     this.osc.type = {sin: 'sine', sqr: 'square', saw: 'sawtooth', tri: 'triangle'}[type];
     this.env = args[0];
     this.env.setAudioParam(this.osc.frequency);
+    this.delayExpr = args[1];
   }
 
   start(time, note) {
-    this.osc.start(time); // TODO delay
+    const delay = this.delayExpr ? evalExpr(this.delayExpr, note.param) : 0;
+    this.osc.start(time + delay);
   }
 
   forceStop(time) {

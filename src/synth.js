@@ -102,7 +102,7 @@ function buildExpression(model, bindings, allNodes, ac) {
 }
 
 function collectComposedNodes(expr) {
-  if (expr.call === 'call' && expr.func === '+') {
+  if (expr.type === 'call' && expr.func === '+') {
     return [...collectComposedNodes(expr.arguments[0]), ...collectComposedNodes(expr.arguments[1])];
   } else if (expr instanceof Node) {
     return [expr];

@@ -42,6 +42,9 @@ export class Envelope extends Node {
 export class FrEnvelope extends Envelope {
   constructor(ac, args) {
     super(ac, args);
+    if (args.length !== 1) {
+      throw new Error('Arguments length is invalid');
+    }
     this.frequecyExpr = args[0];
   }
 
@@ -60,6 +63,9 @@ export class FrEnvelope extends Envelope {
 export class LvEnvelope extends Envelope {
   constructor(ac, args) {
     super(ac, args);
+    if (args.length !== 1) {
+      throw new Error('Arguments length is invalid');
+    }
     this.levelExpr = args[0];
   }
 
@@ -75,6 +81,9 @@ export class LvEnvelope extends Envelope {
 export class AdsrEnvelope extends Envelope {
   constructor(ac, args) {
     super(ac, args);
+    if (args.length !== 5) {
+      throw new Error('Arguments length is invalid');
+    }
     this.levelExpr = args[0];
     this.attackExpr = args[1];
     this.decayExpr = args[2];
