@@ -122,6 +122,34 @@ export class AdsrEnvelope extends Envelope {
   }
 }
 
+export class PercEnvelope extends Envelope {
+  constructor(ac, args) {
+    super(ac, args);
+    if (args.length !== 3) {
+      throw new Error('Arguments length is invalid');
+    }
+    this.levelExpr = args[0];
+    this.attackExpr = args[1];
+    this.releaseExpr = args[2];
+  }
+
+  start(time, note) {
+    const param = note.param;
+    this.level = evalExpr(this.levelExpr, param);
+    this.attack = clamp(TIME_EPS, Infinity, evalExpr(this.attackExpr, param) * 0.001);
+    this.release = clamp(TIME_EPS, Infinity, evalExpr(this.releaseExpr, param) * 0.001);
+
+    this.setValueAtTime(GAIN_EPS, time);
+    this.exponentialRampToValueAtTime(this.level, time + this.attack);
+
+    this.exponentialRampToValueAtTime(0 < this.level ? GAIN_EPS : -GAIN_EPS, time + this.attack + this.release);
+  }
+
+  stop(time, note) {
+    this._endTime = note.startTime + this.attack + this.release;
+  }
+}
+
 
 function clamp(min, max, val) {
   return Math.max(min, Math.min(max, val));

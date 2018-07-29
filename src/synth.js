@@ -6,6 +6,7 @@ import {
   FrEnvelope,
   LvEnvelope,
   AdsrEnvelope,
+  PercEnvelope,
 } from './nodes';
 
 export class Synth {
@@ -59,10 +60,12 @@ function buildExpression(model, bindings, allNodes, ac) {
         case 'fr':
         case 'lv':
         case 'adsr':
+        case 'perc':
           node = new {
             fr: FrEnvelope,
             lv: LvEnvelope,
             adsr: AdsrEnvelope,
+            perc: PercEnvelope,
           }[model.func](ac, args);
           allNodes.push(node);
           return node;
@@ -89,11 +92,13 @@ function buildExpression(model, bindings, allNodes, ac) {
             func: model.func,
             arguments: args
           }
+        default:
+          throw new Error('Invalid func: ' + JSON.stringify(model));
       }
       break;
     case 'identifier':
       if (!(model.identifier in bindings)) {
-        throw Error('Identifier not found: ' + JSON.stringify(model.identifier));
+        throw new Error('Identifier not found: ' + JSON.stringify(model.identifier));
       }
       return bindings[model.identifier];
     case 'value':
