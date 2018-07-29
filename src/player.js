@@ -5,9 +5,9 @@ export default class Player {
   constructor(music, opt={}) {
     this.music = music;
 
-    if (typeof webkitAudioContext !== "undefined") {
+    if (typeof webkitAudioContext !== 'undefined') {
       this.ac = new webkitAudioContext();
-    } else if (typeof AudioContext !== "undefined") {
+    } else if (typeof AudioContext !== 'undefined') {
       this.ac = new AudioContext();
     } else {
       throw new Error("Failed to get AudioContext.");
@@ -50,11 +50,24 @@ export default class Player {
     this._stop = false;
   }
 
-  async play() {
+  play() {
     this.init();
+    this.playIterator(this.seeker(this.music.events));
+  }
+
+  stop() {
+    this._stop = true;
+    for (const track of this.tracks) {
+      for (const note of track.notes) {
+        note.forceStop();
+      }
+    }
+  }
+
+  async playIterator(iterator) {
     let time = this.ac.currentTime + 0.01;
     let beat = 0;
-    for (const event of this.seeker(this.music.events)) {
+    for (const event of iterator) {
       if (event.beat < beat) {
         // segno detected
         beat = event.beat;
@@ -73,7 +86,7 @@ export default class Player {
         }
       }
 
-      await asyncSleep((time - this.ac.currentTime - this.bufferTime) * 1000);
+      await sleep((time - this.ac.currentTime - this.bufferTime) * 1000);
 
       if (this._stop) {
         return;
@@ -93,15 +106,6 @@ export default class Player {
         if (!note.stoped) {
           note.stop(time + (note.endBeat - beat) * 60 / this.tempo);
         }
-      }
-    }
-  }
-
-  stop() {
-    this._stop = true;
-    for (const track of this.tracks) {
-      for (const note of track.notes) {
-        note.forceStop();
       }
     }
   }
@@ -151,9 +155,7 @@ export default class Player {
         }
         break;
       case 'synth':
-        {
-          this.tracks[event.track].synth = event.synth;
-        }
+        this.tracks[event.track].synth = event.synth;
         break;
     }
   }
@@ -222,4 +224,4 @@ export default class Player {
   }
 }
 
-const asyncSleep = time => new Promise(resolve => setTimeout(resolve, time));
+const sleep = time => new Promise(resolve => setTimeout(resolve, time));
