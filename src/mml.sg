@@ -230,7 +230,7 @@ segno = {
 
 synth = {
  "%" _
-  assignments: sepBy<{
+  assignments: sepEndBy<{
     identifier: expIdentifier
     _ "=" _
     expression: operator1

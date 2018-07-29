@@ -120,6 +120,8 @@ export class AdsrEnvelope extends Envelope {
     }
     this.exponentialRampToValueAtTime(0 < this.level ? GAIN_EPS : -GAIN_EPS, this._endTime);
   }
+
+  // setParam(...)
 }
 
 export class PercEnvelope extends Envelope {

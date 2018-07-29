@@ -7,6 +7,7 @@ import {
   LvEnvelope,
   AdsrEnvelope,
   PercEnvelope,
+  Filter,
 } from './nodes';
 
 export class Synth {
@@ -67,6 +68,17 @@ function buildExpression(model, bindings, allNodes, ac) {
             adsr: AdsrEnvelope,
             perc: PercEnvelope,
           }[model.func](ac, args);
+          allNodes.push(node);
+          return node;
+        case 'lpf':
+        case 'hpf':
+        case 'bpf':
+        case 'ncf':
+        case 'apf':
+        case 'hsf':
+        case 'lsf':
+        case 'pkf':
+          node = new Filter(ac, model.func, args);
           allNodes.push(node);
           return node;
         case '<-':
