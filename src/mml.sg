@@ -241,15 +241,15 @@ synth = {
   type:=synth
 }
 
-operator1 = operator<operator2, operator1, `"<-", operator2>
-operator2 = operator<operator2, operator3, `("+" | "-"), operator3>
-operator3 = operator<operator3, operator4, `("*" | "/"), operator4>
-operator4 = {
+operator1 = operator<operator1, operator2, `("+" | "-"), operator2>
+operator2 = operator<operator2, operator3, `("*" | "/"), operator3>
+operator3 = {
   func: `"-"
   _
-  arguments: @operator4
+  arguments: @operator3
   type:=call
-} | operator5
+} | operator4
+operator4 = operator<operator5, operator4, `"<-", operator5>
 operator5 = factor
 
 operator<left, right, op, next> = {
