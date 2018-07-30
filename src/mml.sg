@@ -286,7 +286,7 @@ expIdentifier = `([a-z] *[a-z0-9])
 
 //////////
 
-identifier = `([A-Z] *[A-Za-z0-9])
+identifier = `([A-Z] *[A-Z_])
 
 signedInteger = `([+-]([1-9] *[0-9] | "0")) -> { return parseInt($); }
 unsignedInteger = `([1-9] *[0-9] | "0") -> { return parseInt($); }

@@ -29,11 +29,10 @@ export default class Player {
       const param = {
         volume: 1,
         pan: 0.5,
-        f: null,
         w: 0,
         x: 0,
-        y: null,
         z: 0,
+        // Do not include f and y.
       };
       const mixer = new Mixer(this.ac);
       mixer.setParam(param, 0);
