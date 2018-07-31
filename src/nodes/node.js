@@ -15,6 +15,10 @@ export class Node {
 
   setParam(param, time, note) {
   }
+
+  setAudioParam(audioParams) {
+    this.connect(audioParams);
+  }
 }
 
 

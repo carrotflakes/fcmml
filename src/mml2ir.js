@@ -147,7 +147,8 @@ function *serialize(commands, context=null) {
     absoluteQuantize: 0,
     transpose: 0,
     accidentals: {},
-    timeRatio: 1
+    degreeRoot: 0,
+    timeRatio: 1,
   };
   const parallelEvents = [];
   for (const command of commands) {
@@ -314,11 +315,29 @@ function *serialize(commands, context=null) {
             'C-': {b: -1, e: -1, a: -1, d: -1, g: -1, c: -1, f: -1},
             'A-m': {b: -1, e: -1, a: -1, d: -1, g: -1, c: -1, f: -1},
           }[command.key];
+          context.degreeRoot = {
+            'C':   0, 'Am':   9,
+            'G':   7, 'Em':   4,
+            'D':   2, 'Bm':  11,
+            'A':   9, 'F+m':  6,
+            'E':   4, 'C+m':  1,
+            'B':  11, 'G+m':  8,
+            'F+':  6, 'D+m':  3,
+            'C+':  1, 'A+m': 10,
+            'F':   5, 'Dm':   2,
+            'B-': 10, 'Gm':   7,
+            'E-':  3, 'Cm':   0,
+            'A-':  8, 'Fm':   5,
+            'D-':  1, 'B-m': 10,
+            'G-':  6, 'E-m':  3,
+            'C-': 11, 'A-m':  8,
+            }[command.key];
         } else if (command.pitchs) {
           context.accidentals = {};
           for (const pitch of command.pitchs) {
             context.accidentals[pitch.name] = pitch.accidental;
           }
+          context.degreeRoot = 0;
         }
         break;
       case 'velocity':
@@ -409,10 +428,13 @@ function notenumsFromChord(chord, context) {
       ...context,
       accidentals: {}
     });
-  } else {
-    root = pitch2notenum(context, { // TODO
+  } else if (chord.root.degree) {
+    root = pitch2notenum({
       name: 'cdefgab'[chord.root.degree - 1],
-      accidental: chord.root.accidental
+      accidental: chord.root.accidental + context.degreeRoot
+    }, {
+      ...context,
+      accidentals: {}
     });
   }
 
