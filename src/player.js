@@ -76,6 +76,8 @@ export default class Player {
       beat = event.beat;
       time += dTime;
 
+      this.handleEvent(event, beat, time);
+
       // stop notes
       for (const track of this.tracks) {
         for (const note of track.notes) {
@@ -90,8 +92,6 @@ export default class Player {
       if (this._stop) {
         return;
       }
-
-      this.handleEvent(event, beat, time);
 
       // remove stoped notes
       for (const track of this.tracks) {
@@ -115,22 +115,34 @@ export default class Player {
         {
           const track = this.tracks[event.track];
           const endTime = time + event.gatetime * 60 / this.tempo;
-          const note = track.synth.note(
-            this.ac,
-            track.mixer.getInput(),
-            {
-              endBeat: beat + event.gatetime,
-              startTime: time,
-              endTime,
-              frequency: event.frequency,
-              frequencyTo: event.frequencyTo,
-              param: {
-                ...track.param,
-                f: event.frequency,
-                y: event.velocity,
-              },
-            });
-          track.notes.push(note);
+          let note;
+          if (event.slurId !== null) {
+            note = track.notes.find(n => event.slurId === n.id);
+          }
+          if (note) {
+            note.endBeat = beat + event.gatetime;
+            note.endTime = endTime;
+            note.frequency(event.frequency, time, event.frequencyTo, endTime);
+            // TODO update param
+          } else {
+            note = track.synth.note(
+              this.ac,
+              track.mixer.getInput(),
+              {
+                id: event.slurId,
+                endBeat: beat + event.gatetime,
+                startTime: time,
+                endTime,
+                frequency: event.frequency,
+                frequencyTo: event.frequencyTo,
+                param: {
+                  ...track.param,
+                  f: event.frequency,
+                  y: event.velocity,
+                },
+              });
+            track.notes.push(note);
+          }
           track.lastNotes = note;
         }
         break;

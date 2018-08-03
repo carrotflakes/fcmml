@@ -128,6 +128,7 @@ function collectComposedNodes(expr) {
 
 export class Note {
   constructor(opt, rootNodes, allNodes) {
+    this.id = opt.id;
     this.startTime = opt.startTime;
     this.endBeat = opt.endBeat;
     this.param = opt.param;
@@ -136,8 +137,14 @@ export class Note {
     this.stoped = false;
 
     for (const node of this.allNodes) {
-      node.start(opt.startTime, this); // TODO delay
+      node.start(opt.startTime, this);
       node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime, this);
+    }
+  }
+
+  frequency(start, startTime, end, endTime) {
+    for (const node of this.allNodes) {
+      node.frequency(start, startTime, end, endTime, this);
     }
   }
 

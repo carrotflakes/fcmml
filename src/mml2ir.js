@@ -149,6 +149,8 @@ function *serialize(commands, context=null) {
     accidentals: {},
     degreeRoot: 0,
     timeRatio: 1,
+    newSlurId: 0,
+    slurId: null,
   };
   const parallelEvents = [];
   for (const command of commands) {
@@ -208,8 +210,14 @@ function *serialize(commands, context=null) {
             notenumTo = pitch2notenum(pitchTo.pitch, newContext);
           }
           let gatetime = calcGatetime(context, duration);
+          let slurId = context.slurId;
           if (slur) {
             gatetime = duration;
+            if (context.slurId === null) {
+              slurId = context.slurId = context.newSlurId++;
+            }
+          } else {
+            context.slurId = null;
           }
           yield {
             type: 'note',
@@ -219,7 +227,8 @@ function *serialize(commands, context=null) {
             notenumTo,
             duration,
             gatetime,
-            velocity: context.velocity
+            velocity: context.velocity,
+            slurId,
           };
           context.beat += duration;
         }
@@ -242,7 +251,8 @@ function *serialize(commands, context=null) {
               notenumTo: null,
               duration,
               gatetime: calcGatetime(context, duration),
-              velocity: context.velocity
+              velocity: context.velocity,
+              slurId: null,
             };
           }
           context.beat += duration;
@@ -373,6 +383,7 @@ function *serialize(commands, context=null) {
       case 'parallel':
         parallelEvents.push(...serialize([command.command], {...context}));
         parallelEvents.sort((x, y) => x.beat - y.beat);
+        context.slurId = null;
         break;
       default:
         yield {...command, track: context.track, beat: context.beat};
@@ -501,10 +512,6 @@ function notenumsFromPitches(pitches, context) {
     }
   }
   return notenums;
-}
-
-function keyToKeyRoot(key) {
-  return key * (key < 0 ? -5 : 7) % 12;
 }
 
 function clamp(min, max, val) {
