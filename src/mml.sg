@@ -14,6 +14,7 @@ command
 | velocity
 | volume
 | pan
+| portament
 | synthParam
 | transpose
 | key
@@ -185,6 +186,16 @@ pan = {
   "p" _
   number: (unsignedInteger | \64)
   type:=pan
+}
+
+portament = {
+  "@u" _
+  number: unsignedInteger
+  type:=portament
+|
+  "@u" _
+  number: signedInteger
+  type:=relativePortament
 }
 
 synthParam = {

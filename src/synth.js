@@ -9,6 +9,7 @@ import {
   PercEnvelope,
   Filter,
 } from './nodes';
+import {interpolateExponentialRamp} from './nodes/util.js';
 
 export class Synth {
   constructor(model) {
@@ -130,21 +131,25 @@ export class Note {
   constructor(opt, rootNodes, allNodes) {
     this.id = opt.id;
     this.startTime = opt.startTime;
+    this.endTime = opt.endTime;
     this.endBeat = opt.endBeat;
     this.param = opt.param;
+    this.lastFrequency = null;
     this.rootNodes = rootNodes;
     this.allNodes = allNodes;
     this.stoped = false;
 
     for (const node of this.allNodes) {
       node.start(opt.startTime, this);
-      node.frequency(opt.frequency, opt.startTime, opt.frequencyTo, opt.endTime, this);
     }
   }
 
   frequency(start, startTime, end, endTime) {
+    this.lastFrequency = end;
+    const clampedEndTime = clamp(0, this.endTime, endTime);
+    const clampedEnd = interpolateExponentialRamp(start, end, (clampedEndTime - startTime) / (endTime - startTime));
     for (const node of this.allNodes) {
-      node.frequency(start, startTime, end, endTime, this);
+      node.frequency(start, startTime, clampedEnd, clampedEndTime, this);
     }
   }
 
@@ -178,4 +183,8 @@ export class Note {
       node.setParam(this.param, time, this);
     });
   }
+}
+
+function clamp(min, max, val) {
+  return Math.max(min, Math.min(max, val));
 }

@@ -29,6 +29,7 @@ export default class Player {
       const param = {
         volume: 1,
         pan: 0.5,
+        portament: 0,
         w: 0,
         x: 0,
         z: 0,
@@ -122,9 +123,8 @@ export default class Player {
           if (note) {
             note.endBeat = beat + event.gatetime;
             note.endTime = endTime;
-            note.frequency(event.frequency, time, event.frequencyTo, endTime);
             // TODO update param
-          } else {
+          } else{
             note = track.synth.note(
               this.ac,
               track.mixer.getInput(),
@@ -133,8 +133,6 @@ export default class Player {
                 endBeat: beat + event.gatetime,
                 startTime: time,
                 endTime,
-                frequency: event.frequency,
-                frequencyTo: event.frequencyTo,
                 param: {
                   ...track.param,
                   f: event.frequency,
@@ -143,7 +141,14 @@ export default class Player {
               });
             track.notes.push(note);
           }
-          track.lastNotes = note;
+          if (event.frequency === event.frequencyTo &&
+              track.param.portament > 0 &&
+              track.lastNote) {
+            note.frequency(track.lastNote.lastFrequency, time, event.frequency, time + track.param.portament * 60 / this.tempo);
+          } else {
+            note.frequency(event.frequency, time, event.frequencyTo, endTime);
+          }
+          track.lastNote = note;
         }
         break;
       case 'tempo':
