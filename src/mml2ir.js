@@ -13,6 +13,7 @@ export function mml2ir(commands) {
     0: newTrack()
   };
   let segnoExist = false;
+  let jumpExist = false;
   let lastBeat = 0;
   for (const event of serialize(commands)) {
     const {type, track, beat, number} = event;
@@ -116,6 +117,15 @@ export function mml2ir(commands) {
           segnoExist = true;
         }
         break;
+      case 'jump':
+        if (!jumpExist) {
+          events.push({
+            type: 'meta',
+            metaType: 'jump',
+            beat,
+          });
+          jumpExist = true;
+        }
       case 'end':
         lastBeat = event.beat;
         break;

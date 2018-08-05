@@ -48,11 +48,12 @@ export default class Player {
     }
     this.tempo = 120;
     this._stop = false;
+    this.beat = 0;
   }
 
   play() {
     this.init();
-    this.playIterator(this.seeker(this.music.events));
+    this.playIterator(this.seeker(this.music.events), this.music.jump);
   }
 
   stop() {
@@ -64,31 +65,38 @@ export default class Player {
     }
   }
 
-  async playIterator(iterator) {
+  async playIterator(iterator, jump) {
     let time = this.ac.currentTime + 0.01;
-    let beat = 0;
     for (const event of iterator) {
-      if (event.beat < beat) {
+      if (event.beat < this.beat) {
         // segno detected
-        beat = event.beat;
+        this.beat = event.beat;
       }
-      const oldBeat = beat;
-      const dTime = (event.beat - beat) * 60 / this.tempo;
-      beat = event.beat;
+      const oldBeat = this.beat;
+      const dTime = (event.beat - this.beat) * 60 / this.tempo;
+      this.beat = event.beat;
       time += dTime;
 
-      this.handleEvent(event, beat, time);
+      if (jump && event.metaType === 'jump') {
+        jump = false;
+        time = this.ac.currentTime + 0.01;
+      }
+      if (!(jump && event.type === 'note')) {
+        this.handleEvent(event, time);
+      }
 
       // stop notes
       for (const track of this.tracks) {
         for (const note of track.notes) {
-          if (!note.stoped && note.endBeat <= beat) {
+          if (!note.stoped && note.endBeat <= this.beat) {
             note.stop(time - dTime + (note.endBeat - oldBeat) * 60 / this.tempo);
           }
         }
       }
 
-      await sleep((time - this.ac.currentTime - this.bufferTime) * 1000);
+      if (!jump) {
+        await sleep((time - this.ac.currentTime - this.bufferTime) * 1000);
+      }
 
       if (this._stop) {
         return;
@@ -104,13 +112,13 @@ export default class Player {
     for (const track of this.tracks) {
       for (const note of track.notes) {
         if (!note.stoped) {
-          note.stop(time + (note.endBeat - beat) * 60 / this.tempo);
+          note.stop(time + (note.endBeat - this.beat) * 60 / this.tempo);
         }
       }
     }
   }
 
-  handleEvent(event, beat, time) {
+  handleEvent(event, time) {
     switch (event.type) {
       case 'note':
         {
@@ -121,7 +129,7 @@ export default class Player {
             note = track.notes.find(n => event.slurId === n.id);
           }
           if (note) {
-            note.endBeat = beat + event.gatetime;
+            note.endBeat = this.beat + event.gatetime;
             note.endTime = endTime;
             // TODO update param
           } else{
@@ -130,7 +138,7 @@ export default class Player {
               track.mixer.getInput(),
               {
                 id: event.slurId,
-                endBeat: beat + event.gatetime,
+                endBeat: this.beat + event.gatetime,
                 startTime: time,
                 endTime,
                 param: {
@@ -178,6 +186,7 @@ export default class Player {
 
   *seeker(events) {
     let segno = null;
+
     for (let i = 0; i < events.length; ++i) {
       switch (events[i].metaType) {
         case 'segno':

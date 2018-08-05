@@ -4,9 +4,10 @@ import {Synth} from './synth.js';
 
 export class Music {
 
-  constructor(events, trackNum) {
+  constructor(events, trackNum, jump) {
     this.events = events;
     this.trackNum = trackNum;
+    this.jump = jump;
   }
 
   static fromMml(mml) {
@@ -16,14 +17,15 @@ export class Music {
   }
 
   static fromIr(ir) {
-    const {events, trackNum} = buildIr(ir);
-    return new Music(events, trackNum);
+    const {events, trackNum, jump} = buildIr(ir);
+    return new Music(events, trackNum, jump);
   }
 }
 
 function buildIr(ir) {
   const events = [...ir];
   let trackMaxId = 0;
+  let jump = false;
   for (const i in events) {
     switch (events[i].type) {
       case 'note':
@@ -41,6 +43,11 @@ function buildIr(ir) {
           synth: new Synth(events[i])
         };
         break;
+      case 'meta':
+        if (events[i].metaType === 'jump') {
+          jump = true;
+        }
+        break;
     }
     if (events[i].track !== void(0)) {
       trackMaxId = Math.max(trackMaxId, events[i].track);
@@ -48,7 +55,8 @@ function buildIr(ir) {
   }
   return {
     events,
-    trackNum: trackMaxId + 1
+    trackNum: trackMaxId + 1,
+    jump,
   };
 }
 

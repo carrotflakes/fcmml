@@ -21,6 +21,7 @@ command
 | tempo
 | group
 | segno
+| jump
 | synth
 
 parallel = {
@@ -237,6 +238,11 @@ group = {
 segno = {
   "$"
   type:=segno
+}
+
+jump =  {
+  "!"
+  type:=jump
 }
 
 synth = {
