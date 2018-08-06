@@ -162,7 +162,7 @@ function *serialize(commands, context=null) {
     newSlurId: 0,
     slurId: null,
   };
-  const parallelEvents = [];
+  let parallelEvents = [];
   for (const command of commands) {
     while (parallelEvents.length > 0 && parallelEvents[0].beat <= context.beat) {
       const command = parallelEvents.shift();
@@ -388,11 +388,11 @@ function *serialize(commands, context=null) {
             parallelEvents.push(...serialize(command.jointCommands, newContext));
         }
         context.beat = newContext.beat;
-        parallelEvents.sort((x, y) => x.beat - y.beat);
+        parallelEvents = sort(parallelEvents, (x, y) => x.beat - y.beat);
         break;
       case 'parallel':
         parallelEvents.push(...serialize([command.command], {...context}));
-        parallelEvents.sort((x, y) => x.beat - y.beat);
+        parallelEvents = sort(parallelEvents, (x, y) => x.beat - y.beat);
         context.slurId = null;
         break;
       default:
@@ -526,4 +526,23 @@ function notenumsFromPitches(pitches, context) {
 
 function clamp(min, max, val) {
   return Math.max(min, Math.min(max, val));
+}
+
+function sort(array, comp) {
+  let array2 = Array.from(array);
+  for (let i = 1; i < array.length; i *= 2) {
+    let c = 0;
+    for (let j = 0; j < array.length; j += i * 2) {
+      let a = j, b = j + i;
+      while (c < Math.min(array.length, j + i * 2)) {
+        if (b < Math.min(array.length, j + i * 2) && (a === j + i || comp(array[a], array[b]) > 0)) {
+          array2[c++] = array[b++];
+        } else {
+          array2[c++] = array[a++];
+        }
+      }
+    }
+    [array, array2] = [array2, array];
+  }
+  return array;
 }
