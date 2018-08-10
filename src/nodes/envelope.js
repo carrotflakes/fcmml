@@ -53,10 +53,16 @@ export class FrEnvelope extends Envelope {
       ...note.param,
       f: start
     }), time);
-    this.exponentialRampToValueAtTime(evalExpr(this.frequecyExpr, {
+    let endFrequency = evalExpr(this.frequecyExpr, {
       ...note.param,
       f: end
-    }), endTime)
+    });
+    if (endFrequency < 0) {
+      endFrequency = Math.min(-FREQUENCY_EPS, endFrequency);
+    } else {
+      endFrequency = Math.max(FREQUENCY_EPS, endFrequency);
+    }
+    this.exponentialRampToValueAtTime(endFrequency, endTime)
   }
 }
 
@@ -159,3 +165,4 @@ function clamp(min, max, val) {
 
 const TIME_EPS = 0.0000001;
 const GAIN_EPS = 0.01
+const FREQUENCY_EPS = 0.0000001;
