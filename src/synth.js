@@ -27,6 +27,7 @@ export class Synth {
 function build(model, ac) {
   const {assignments, body} = model;
   const bindings = {
+    bps: {type: 'variable', identifier: 'bps'},
     f: {type: 'variable', identifier: 'f'},
     w: {type: 'variable', identifier: 'w'},
     x: {type: 'variable', identifier: 'x'},

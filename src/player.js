@@ -5,17 +5,11 @@ export default class Player {
   constructor(music, opt={}) {
     this.music = music;
 
-    if (typeof webkitAudioContext !== 'undefined') {
-      this.ac = new webkitAudioContext();
-    } else if (typeof AudioContext !== 'undefined') {
-      this.ac = new AudioContext();
-    } else {
-      throw new Error("Failed to get AudioContext.");
-    }
+    this.ac = opt.audioContext || new AudioContext();
 
     this.mixerMaster = new Mixer(this.ac);
     this.mixerMaster.setParam({
-      volume: 0.25,
+      volume: 0.5,
       pan: 0.5
     }, 0);
     this.mixerMaster.connect(this.ac.destination);
@@ -24,9 +18,11 @@ export default class Player {
   }
 
   init() {
+    this.tempo = 120;
     this.tracks = [];
     for (let i = 0; i < this.music.trackNum; ++i) {
       const param = {
+        bps: this.tempo / 60,
         volume: 1,
         pan: 0.5,
         portament: 0,
@@ -46,7 +42,6 @@ export default class Player {
         lastNote: null,
       };
     }
-    this.tempo = 120;
     this._stop = false;
     this.beat = 0;
   }
@@ -164,6 +159,12 @@ export default class Player {
         for (const track of this.tracks) {
           for (const note of track.notes) {
             note.tempo(60 / this.tempo, time);
+          }
+
+          track.param.bps = this.tempo / 60;
+          track.mixer.setParam(track.param, time);
+          for (const note of track.notes) {
+            note.setParam(track.param, time);
           }
         }
         break;
