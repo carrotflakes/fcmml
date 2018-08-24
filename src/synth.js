@@ -172,7 +172,8 @@ export class Note {
     return this.endTime <= time;
   }
 
-  tempo(time, spb) {
+  tempo(spb, time) {
+    this.allNodes.forEach(n => n.tempo(spb, time));
   }
 
   setParam(param, time) {

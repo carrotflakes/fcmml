@@ -13,6 +13,9 @@ export class Node {
   frequency(start, time, end, endTime, note) {
   }
 
+  tempo(spb, time) {
+  }
+
   setParam(param, time, note) {
   }
 
