@@ -152,6 +152,7 @@ export default class Player {
           } else {
             note.frequency(time, event.frequency, endTime, event.frequencyTo);
           }
+          note.lastFrequency = event.frequencyTo;
           track.lastNote = note;
         }
         break;
