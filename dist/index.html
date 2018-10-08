@@ -6,12 +6,13 @@
   <script>
    let player = null;
 
+   const srcEl = document.getElementById('src');
+
    function play() {
      if (player) {
        player.stop();
      }
 
-     const srcEl = document.getElementById('src');
      const src = srcEl.value;
      const music = fcmml.Music.fromMml(src);
      console.log(music.events);
@@ -27,6 +28,11 @@
 
    document.getElementById('play').onclick = play;
    document.getElementById('stop').onclick = stop;
+   srcEl.onkeypress = e => {
+     if (e.ctrlKey && e.key === "\n") {
+       play();
+     }
+   };
 
   </script>
 </body>
