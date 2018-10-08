@@ -247,14 +247,16 @@ jump =  {
 
 synth = {
  "%" _
-  assignments: sepEndBy<{
-    identifier: expIdentifier
-    _ "=" _
-    expression: operator1
-    type:=assignment
-  }, ",">
-  _
-  body: operator1
+  source: `((
+    sepEndBy<{
+      identifier: expIdentifier
+      _ "=" _
+      expression: operator1
+      type:=assignment
+    }, ",">
+    _
+    operator1
+  )-|)
   type:=synth
 }
 

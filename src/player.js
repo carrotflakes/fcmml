@@ -1,11 +1,16 @@
 import {Synth} from './synth.js';
 import {Mixer} from './nodes';
+import {SynthBuilder, makeDefaultModel, frequency, tempo} from 'fcsynth';
 
 export default class Player {
   constructor(music, opt={}) {
     this.music = music;
 
     this.ac = opt.audioContext || new AudioContext();
+    this.synthBuilder = new SynthBuilder(this.ac, {
+      f: frequency,
+      tempo: tempo
+    });
 
     this.mixerMaster = new Mixer(this.ac);
     this.mixerMaster.setParam({
@@ -22,6 +27,7 @@ export default class Player {
     this.tracks = [];
     for (let i = 0; i < this.music.trackNum; ++i) {
       const param = {
+        tempo: this.tempo,
         bps: this.tempo / 60,
         volume: 1,
         pan: 0.5,
@@ -29,16 +35,16 @@ export default class Player {
         w: 0,
         x: 0,
         z: 0,
-        // Do not include f and y.
+        y: 0.75,
       };
       const mixer = new Mixer(this.ac);
       mixer.setParam(param, 0);
       mixer.connect(this.mixerMaster.getInput());
+      const synth = this.synthBuilder.build(makeDefaultModel('y'), mixer.getInput(), param);
       this.tracks[i] = {
         mixer,
-        synth: this.defaultSynth(),
+        synth,
         param,
-        notes: [],
         lastNote: null,
       };
     }
@@ -54,9 +60,7 @@ export default class Player {
   stop() {
     this._stop = true;
     for (const track of this.tracks) {
-      for (const note of track.notes) {
-        note.forceStop();
-      }
+      track.synth.forceStop();
     }
   }
 
@@ -82,9 +86,10 @@ export default class Player {
 
       // stop notes
       for (const track of this.tracks) {
-        for (const note of track.notes) {
-          if (!note.stoped && note.endBeat <= this.beat) {
-            note.stop(time - dTime + (note.endBeat - oldBeat) * 60 / this.tempo);
+        for (const note of track.synth.notes) {
+          if (!note.stoped && note.noteParams.endBeat <= this.beat) {
+            note.off(time - dTime + (note.noteParams.endBeat - oldBeat) * 60 / this.tempo);
+            note.stoped = true;
           }
         }
       }
@@ -99,15 +104,15 @@ export default class Player {
 
       // remove stoped notes
       for (const track of this.tracks) {
-        track.notes = track.notes.filter(x => !x.ended(this.ac.currentTime));
+        track.synth.update(this.ac.currentTime);
       }
     }
 
     // stop notes
     for (const track of this.tracks) {
-      for (const note of track.notes) {
+      for (const note of track.synth.notes) {
         if (!note.stoped) {
-          note.stop(time + (note.endBeat - this.beat) * 60 / this.tempo);
+          note.off(time + (note.noteParams.endBeat - this.beat) * 60 / this.tempo);
         }
       }
     }
@@ -121,35 +126,31 @@ export default class Player {
           const endTime = time + event.gatetime * 60 / this.tempo;
           let note;
           if (event.slurId !== null) {
-            note = track.notes.find(n => event.slurId === n.id);
+            note = track.synth.notes.find(n => event.slurId === n.noteParams.id);
           }
           if (note) {
-            note.endBeat = this.beat + event.gatetime;
-            note.endTime = endTime;
+            note.noteParams.endBeat = this.beat + event.gatetime;
+            note.noteParams.endTime = endTime;
             // TODO update param
           } else{
             note = track.synth.note(
-              this.ac,
-              track.mixer.getInput(),
               {
                 id: event.slurId,
                 endBeat: this.beat + event.gatetime,
                 startTime: time,
                 endTime,
-                param: {
-                  ...track.param,
-                  f: event.frequency,
-                  y: event.velocity,
-                },
+                f: event.frequency,
+                y: event.velocity,
               });
-            track.notes.push(note);
+            note.on(time);
           }
           if (event.frequency === event.frequencyTo &&
               track.param.portament > 0 &&
               track.lastNote) {
-            note.frequency(track.lastNote.lastFrequency, time, event.frequency, time + track.param.portament * 60 / this.tempo);
+            note.frequency(time, track.lastNote.lastFrequency,
+                           time + track.param.portament * 60 / this.tempo, event.frequency);
           } else {
-            note.frequency(event.frequency, time, event.frequencyTo, endTime);
+            note.frequency(time, event.frequency, endTime, event.frequencyTo);
           }
           track.lastNote = note;
         }
@@ -157,15 +158,13 @@ export default class Player {
       case 'tempo':
         this.tempo = event.tempo;
         for (const track of this.tracks) {
-          for (const note of track.notes) {
-            note.tempo(60 / this.tempo, time);
-          }
+          /* for (const note of track.notes) {
+           *   note.tempo(60 / this.tempo, time);
+           * }*/
 
           track.param.bps = this.tempo / 60;
           track.mixer.setParam(track.param, time);
-          for (const note of track.notes) {
-            note.setParam(track.param, time);
-          }
+          track.synth.setTrackParam(time, track.param);
         }
         break;
       case 'param':
@@ -174,13 +173,17 @@ export default class Player {
           const track = this.tracks[trackId];
           track.param[name] = value;
           track.mixer.setParam(track.param, time);
-          for (const note of track.notes) {
-            note.setParam(track.param, time);
-          }
+          track.synth.setTrackParam(time, track.param);
         }
         break;
       case 'synth':
-        this.tracks[event.track].synth = event.synth;
+        {
+          const track = this.tracks[event.track];
+          track.synth = this.synthBuilder.build(
+            this.synthBuilder.source2model(event.source),
+            track.mixer.getInput(),
+            track.synth.trackParams);
+        }
         break;
     }
   }
@@ -203,50 +206,6 @@ export default class Player {
       }
       yield events[i];
     }
-  }
-
-  defaultSynth() {
-    return new Synth({
-      assignments: [],
-      body: {
-        func: "<-",
-        type: "call",
-        arguments: [
-          {
-            func: "gain",
-            arguments: [
-              {
-                func: "lv",
-                arguments: [
-                  {
-                    identifier: "y",
-                    type: "identifier"
-                  }
-                ],
-                type: "call"
-              }
-            ],
-            type: "call"
-          },
-          {
-            func: "sqr",
-            arguments: [
-              {
-                func: "fr",
-                arguments: [
-                  {
-                    identifier: "f",
-                    type: "identifier"
-                  }
-                ],
-                type: "call"
-              }
-            ],
-            type: "call"
-          }
-        ]
-      }
-    });
   }
 }
 
