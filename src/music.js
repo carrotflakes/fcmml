@@ -40,7 +40,7 @@ function buildIr(ir) {
           type: 'synth',
           beat: events[i].beat,
           track: events[i].track,
-          synth: new Synth(events[i])
+          source: events[i].source,
         };
         break;
       case 'meta':
