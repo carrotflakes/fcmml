@@ -1,6 +1,7 @@
 import mmlParser from './mml.sg';
 import {mml2ir} from './mml2ir.js';
 import {Synth} from './synth.js';
+import {SynthBuilder, frequency, tempo} from 'fcsynth';
 
 export class Music {
 
@@ -36,11 +37,15 @@ function buildIr(ir) {
         };
         break;
       case 'synth':
+        let synthBuilder = new SynthBuilder(null, {
+          f: frequency,
+          tempo: tempo
+        });
         events[i] = {
           type: 'synth',
           beat: events[i].beat,
           track: events[i].track,
-          source: events[i].source,
+          model: synthBuilder.source2model(events[i].source),
         };
         break;
       case 'meta':

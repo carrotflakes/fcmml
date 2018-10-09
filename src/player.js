@@ -181,7 +181,7 @@ export default class Player {
         {
           const track = this.tracks[event.track];
           track.synth = this.synthBuilder.build(
-            this.synthBuilder.source2model(event.source),
+            event.model,
             track.mixer.getInput(),
             track.synth.trackParams);
         }
