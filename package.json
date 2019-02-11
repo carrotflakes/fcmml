@@ -1,6 +1,6 @@
 {
   "name": "fcmml",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -17,7 +17,7 @@
     "babel-plugin-transform-object-rest-spread": "^6.26.0",
     "babel-polyfill": "^6.26.0",
     "babel-preset-env": "^1.7.0",
-    "fcsynth": "0.0.2",
+    "fcsynth": "^0.1.0",
     "snakeparser-loader": "^1.0.1",
     "webpack": "^4.12.2",
     "webpack-cli": "^3.0.8"
