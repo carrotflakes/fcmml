@@ -1,9 +1,11 @@
+import {EventEmitter} from 'events';
 import {Synth} from './synth.js';
 import {Mixer} from './nodes';
 import {SynthBuilder, makeDefaultModel, frequency, tempo} from 'fcsynth';
 
-export default class Player {
+export default class Player extends EventEmitter {
   constructor(music, opt={}) {
+    super();
     this.music = music;
 
     this.ac = opt.audioContext || new AudioContext();
@@ -62,6 +64,7 @@ export default class Player {
     for (const track of this.tracks) {
       track.synth.forceStop();
     }
+    this.emit('stop');
   }
 
   async playIterator(iterator, jump) {
@@ -109,13 +112,18 @@ export default class Player {
     }
 
     // stop notes
+    let musicEndTime = time;
     for (const track of this.tracks) {
       for (const note of track.synth.notes) {
         if (!note.stoped) {
-          note.off(time + (note.noteParams.endBeat - this.beat) * 60 / this.tempo);
+          const endTime = time + (note.noteParams.endBeat - this.beat) * 60 / this.tempo;
+          note.off(endTime);
+          musicEndTime = Math.max(musicEndTime, endTime);
         }
       }
     }
+    await sleep((musicEndTime - this.ac.currentTime) * 1000);
+    this.emit('stop');
   }
 
   handleEvent(event, time) {

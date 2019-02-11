@@ -2,11 +2,13 @@
   <textarea id="src" rows="50" cols="100"></textarea>
   <button id="play">play</button>
   <button id="stop">stop</button>
+  <div>status: <span id="status"></span></div>
   <script src="./main.js"></script>
   <script>
    let player = null;
 
    const srcEl = document.getElementById('src');
+   const statusEl = document.getElementById('status');
 
    function play() {
      if (player) {
@@ -18,6 +20,10 @@
      console.log(music.events);
      player = new fcmml.Player(music);
      player.play();
+     statusEl.textContent = 'playing';
+     player.on('stop', () => {
+       statusEl.textContent = 'stopped';
+     });
    }
 
    function stop() {
