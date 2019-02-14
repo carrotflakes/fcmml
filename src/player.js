@@ -22,6 +22,7 @@ export default class Player extends EventEmitter {
     this.mixerMaster.connect(this.ac.destination);
 
     this.bufferTime = opt.bufferTime || 1; // sec
+    this.playing = false;
   }
 
   init() {
@@ -50,8 +51,8 @@ export default class Player extends EventEmitter {
         lastNote: null,
       };
     }
-    this._stop = false;
     this.beat = 0;
+    this.playing = true;
   }
 
   play() {
@@ -60,7 +61,10 @@ export default class Player extends EventEmitter {
   }
 
   stop() {
-    this._stop = true;
+    if (!this.playing) {
+      return;
+    }
+    this.playing = false;
     for (const track of this.tracks) {
       track.synth.forceStop();
     }
@@ -101,7 +105,7 @@ export default class Player extends EventEmitter {
         await sleep((time - this.ac.currentTime - this.bufferTime) * 1000);
       }
 
-      if (this._stop) {
+      if (!this.playing) {
         return;
       }
 
@@ -123,6 +127,7 @@ export default class Player extends EventEmitter {
       }
     }
     await sleep((musicEndTime - this.ac.currentTime) * 1000);
+    this.playing = false;
     this.emit('stop');
   }
 
